@@ -20,7 +20,11 @@ _TODO_
 
 ## Tech stack
 
-_TODO_
+- PWA: Vite + TypeScript, vite-plugin-pwa (service worker + manifest)
+- Target devices: Windows laptop (browser) and Android phone (installed PWA)
+- Repo: https://github.com/juliusuhlmann/clanki
+- Live app: https://juliusuhlmann.github.io/clanki/
+- Deploy: `npm run deploy` builds and publishes `dist/` to the `gh-pages` branch
 
 ## Data and sync
 
