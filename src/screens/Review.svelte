@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { db, type Card } from '../lib/db';
+  import { db, getSetting, type Card } from '../lib/db';
   import { buildQueue, previewIntervals, rate, Rating, Session, type Grade } from '../lib/scheduler';
   import { href } from '../lib/router.svelte';
+  import { earnedSeconds, nextGap, runSeconds } from '../game/reward';
+  import RunnerGame from '../components/RunnerGame.svelte';
 
   let { deckId }: { deckId: string } = $props();
 
@@ -24,12 +26,33 @@
   let loading = $state(true);
   let reviewedCount = $state(0);
 
+  // Runner game between cards. Only ratings feed in; the game never affects scheduling.
+  let gamesEnabled = $state(false);
+  let gap = nextGap();
+  let ratingsSinceRun = $state<number[]>([]);
+  let playing = $state(false);
+  let run = $state({ seconds: 0, earned: 0 });
+
   onMount(async () => {
     deckName = (await db.decks.get(deckId))?.name ?? '';
+    gamesEnabled = await getSetting('gamesEnabled', true);
     session = new Session(await buildQueue(deckId, Date.now()));
     loading = false;
     showNext();
   });
+
+  function startRun() {
+    run = { seconds: runSeconds(ratingsSinceRun), earned: earnedSeconds(ratingsSinceRun) };
+    playing = true;
+  }
+
+  function endRun() {
+    playing = false;
+    ratingsSinceRun = [];
+    gap = nextGap();
+    // Don't count the break as thinking time for the current card.
+    shownAt = Date.now();
+  }
 
   function showNext() {
     if (!session) return;
@@ -55,13 +78,16 @@
       const updated = await rate(current, grade, durationMs, now);
       session.answered(updated, now);
       reviewedCount++;
+      ratingsSinceRun = [...ratingsSinceRun, grade];
       showNext();
+      if (gamesEnabled && current && ratingsSinceRun.length >= gap) startRun();
     } finally {
       busy = false;
     }
   }
 
   function onKeydown(e: KeyboardEvent) {
+    if (playing) return;
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
     if (!revealed && (e.key === ' ' || e.key === 'Enter')) {
       e.preventDefault();
@@ -117,7 +143,18 @@
           ? 'Nothing due right now.'
           : `You reviewed ${reviewedCount} card${reviewedCount === 1 ? '' : 's'}.`}
       </p>
-      <a class="btn primary" href={href({ name: 'decks' })}>Back to decks</a>
+      {#if gamesEnabled && ratingsSinceRun.length >= 3}
+        <button class="btn primary" onclick={startRun}>
+          Bonus run ({runSeconds(ratingsSinceRun)}s)
+        </button>
+      {/if}
+      <a class="btn" class:primary={!(gamesEnabled && ratingsSinceRun.length >= 3)} href={href({ name: 'decks' })}
+        >Back to decks</a
+      >
     </div>
   {/if}
 </div>
+
+{#if playing}
+  <RunnerGame seconds={run.seconds} earned={run.earned} onfinish={endRun} />
+{/if}

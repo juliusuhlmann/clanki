@@ -81,3 +81,16 @@ export async function getNewPerDay(database: ClankiDb = db): Promise<number> {
 export async function setNewPerDay(value: number, database: ClankiDb = db): Promise<void> {
   await database.settings.put({ key: 'newPerDay', value });
 }
+
+export async function getSetting<T extends number | boolean | string>(
+  key: string,
+  fallback: T,
+  database: ClankiDb = db,
+): Promise<T> {
+  const row = await database.settings.get(key);
+  return typeof row?.value === typeof fallback ? (row!.value as T) : fallback;
+}
+
+export async function setSetting(key: string, value: number | boolean | string, database: ClankiDb = db): Promise<void> {
+  await database.settings.put({ key, value });
+}

@@ -4,10 +4,13 @@ export type Route =
   | { name: 'decks' }
   | { name: 'deck'; deckId: string }
   | { name: 'review'; deckId: string }
-  | { name: 'settings' };
+  | { name: 'settings' }
+  /** Development only: opens the runner game directly. */
+  | { name: 'devRunner' };
 
 function parse(hash: string): Route {
   const [, screen, id] = hash.replace(/^#/, '').split('/');
+  if (import.meta.env.DEV && screen === 'dev-runner') return { name: 'devRunner' };
   if (screen === 'deck' && id) return { name: 'deck', deckId: decodeURIComponent(id) };
   if (screen === 'review' && id) return { name: 'review', deckId: decodeURIComponent(id) };
   if (screen === 'settings') return { name: 'settings' };
@@ -30,6 +33,8 @@ export function href(route: Route): string {
       return `#/review/${encodeURIComponent(route.deckId)}`;
     case 'settings':
       return '#/settings';
+    case 'devRunner':
+      return '#/dev-runner';
   }
 }
 

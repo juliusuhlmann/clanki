@@ -201,7 +201,7 @@ input.narrow {
   width: 6rem;
 }
 
-.row input:not(.narrow) {
+.row input:not(.narrow):not([type='checkbox']) {
   flex: 1;
   min-width: 10rem;
   width: auto;
@@ -221,6 +221,18 @@ label {
 
 label.row {
   flex-direction: row;
+}
+
+label.toggle {
+  margin-top: 0.75rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+label.toggle input {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--accent);
 }
 
 input[type='search'] {

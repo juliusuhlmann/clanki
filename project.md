@@ -18,7 +18,15 @@ Done (steps 2–3):
 
 ## The game
 
-_TODO_
+Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
+- A glowing orange spark glides down a three-lane library corridor (pseudo-3D, plain canvas 2D, no image assets)
+- Controls: swipe left/right (or ←/→, A/D) to change lane; swipe up, tap, ↑/W or Space to jump
+- Obstacles: book piles (jump or dodge), book carts (dodge), rolling ladders spanning two lanes (dodge). Every row leaves at least one lane empty, spaced so it's always reachable
+- Collect glowing letters (spelling CLANKI) for points; score = distance + 10 per letter; best score kept in settings
+- 3 hearts; a hit costs a heart, flashes the screen and vibrates the phone; the run ends when time or hearts run out
+- Appears every 6–10 cards (random). Length = 15s + earned seconds (Again 0, Hard +2, Good +4, Easy +4), max 40s. A bonus run is offered at the end of a session if ≥3 cards were answered since the last run
+- Skippable, and can be turned off in Settings. The game never affects scheduling
+- Dev only: `#/dev-runner` opens the game directly; `window.__runner` exposes `{ game, paused }` for inspection
 
 ## Scheduling and exam mode
 

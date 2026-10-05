@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getNewPerDay, setNewPerDay } from '../lib/db';
+  import { getNewPerDay, setNewPerDay, getSetting, setSetting } from '../lib/db';
   import { exportData, backupFileName, parseBackup, planImport, applyImport, type ImportPlan } from '../lib/backup';
   import { href } from '../lib/router.svelte';
 
@@ -12,8 +12,11 @@
   let importDone = $state('');
   let fileInput: HTMLInputElement | undefined = $state();
 
+  let gamesEnabled = $state(true);
+
   onMount(async () => {
     newPerDay = await getNewPerDay();
+    gamesEnabled = await getSetting('gamesEnabled', true);
     persisted = (await navigator.storage?.persisted?.()) ?? null;
   });
 
@@ -83,6 +86,14 @@
       onchange={saveNewPerDay}
     />
     {#if saved}<span class="muted small">Saved</span>{/if}
+  </label>
+  <label class="row toggle">
+    <input
+      type="checkbox"
+      bind:checked={gamesEnabled}
+      onchange={() => setSetting('gamesEnabled', gamesEnabled)}
+    />
+    Library runs between cards (every 6–10 cards)
   </label>
 </section>
 

@@ -4,6 +4,7 @@
   import Deck from './screens/Deck.svelte';
   import Review from './screens/Review.svelte';
   import Settings from './screens/Settings.svelte';
+  import RunnerGame from './components/RunnerGame.svelte';
 
   let online = $state(navigator.onLine);
 </script>
@@ -32,5 +33,7 @@
     {/key}
   {:else if router.route.name === 'settings'}
     <Settings />
+  {:else if router.route.name === 'devRunner'}
+    <RunnerGame seconds={40} earned={20} onfinish={() => history.back()} />
   {/if}
 </main>
