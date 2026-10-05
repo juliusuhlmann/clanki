@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRng, minGap, PILE_HEIGHT, Spawner } from './spawner';
+import { createRng, ladderHeightAt, minGap, PILE_HEIGHT, Spawner } from './spawner';
 import { HOVER_Y } from './engine';
 
 describe('Spawner', () => {
@@ -34,7 +34,34 @@ describe('Spawner', () => {
     expect(kinds.get('pile')).toBe(PILE_HEIGHT);
     expect(PILE_HEIGHT).toBeLessThan(apexBottom);
     expect(kinds.get('cart')).toBeGreaterThan(apexBottom);
-    expect(kinds.get('ladder')).toBeGreaterThan(apexBottom);
+  });
+
+  it('leans ladders on a wall and only puts carts in the far lane beside them', () => {
+    const spawner = new Spawner(createRng(11));
+    let ladders = 0;
+    for (let i = 0; i < 2000; i++) {
+      const row = spawner.next(12);
+      const ladder = row.obstacles.find((o) => o.kind === 'ladder');
+      if (!ladder) continue;
+      ladders++;
+      expect([-1, 1]).toContain(ladder.side);
+      const farLane = ladder.side === -1 ? 2 : 0;
+      for (const o of row.obstacles.filter((o) => o !== ladder)) {
+        expect(o.kind).toBe('cart');
+        expect(o.lanes).toEqual([farLane]);
+      }
+    }
+    expect(ladders).toBeGreaterThan(100);
+  });
+
+  it('ladder heights: low over the middle lane, high near the wall, none in the far lane', () => {
+    // Leaning on the left wall.
+    expect(ladderHeightAt(-1, 0)!).toBeLessThan(0.6);
+    expect(ladderHeightAt(-1, -1.1)!).toBeGreaterThan(1.5);
+    expect(ladderHeightAt(-1, 1.1)).toBeNull();
+    // Mirrored on the right wall.
+    expect(ladderHeightAt(1, 0)).toBeCloseTo(ladderHeightAt(-1, 0)!);
+    expect(ladderHeightAt(1, -1.1)).toBeNull();
   });
 
   it('is deterministic for a given seed', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Game, type Action, type GameEvent } from './engine';
-import { CART_HEIGHT, PILE_HEIGHT } from './spawner';
+import { BOOST_GAIN, BOOST_SECONDS, Game, type Action, type GameEvent } from './engine';
+import { CART_HEIGHT, LADDER_TOP_Y, PILE_HEIGHT } from './spawner';
 
 const DT = 1 / 60;
 
@@ -34,6 +34,10 @@ function addObstacle(game: Game, kind: 'pile' | 'cart', lane: number, z: number)
     variant: 1,
     hit: false,
   });
+}
+
+function addLadder(game: Game, side: -1 | 1, z: number) {
+  game.obstacles.push({ kind: 'ladder', lanes: [1], side, z, depth: 0.5, height: LADDER_TOP_Y, variant: 1, hit: false });
 }
 
 describe('Game', () => {
@@ -90,13 +94,65 @@ describe('Game', () => {
     expect(events).toContainEqual({ type: 'end', reason: 'hearts' });
   });
 
-  it('collects letters in the player lane', () => {
+  it('a letter gives a 20% speed boost that fades out', () => {
+    const boosted = emptyGame();
+    const plain = emptyGame();
+    boosted.letters.push({ lane: 1, z: 2, y: 0.5, char: 'C', taken: false, phase: 0 });
+    plain.letters.push({ lane: 0, z: 2, y: 0.5, char: 'C', taken: false, phase: 0 });
+    simulate(boosted, 0.3);
+    simulate(plain, 0.3);
+    expect(boosted.boost).toBeGreaterThan(0.85);
+    expect(boosted.speed / plain.speed).toBeGreaterThan(1.17);
+    expect(boosted.speed / plain.speed).toBeLessThanOrEqual(1 + BOOST_GAIN + 1e-9);
+
+    simulate(boosted, BOOST_SECONDS);
+    simulate(plain, BOOST_SECONDS);
+    expect(boosted.boost).toBe(0);
+    expect(boosted.speed).toBeCloseTo(plain.speed);
+    expect(boosted.score).toBeGreaterThan(plain.score);
+  });
+
+  it('a second letter refills the boost instead of stacking', () => {
     const game = emptyGame();
-    game.letters.push({ lane: 1, z: 4, y: 0.5, char: 'C', taken: false, phase: 0 });
-    game.letters.push({ lane: 0, z: 4, y: 0.5, char: 'L', taken: false, phase: 0 });
-    simulate(game, 1);
-    expect(game.lettersCollected).toBe(1);
-    expect(game.score).toBeGreaterThanOrEqual(10);
+    game.letters.push({ lane: 1, z: 2, y: 0.5, char: 'C', taken: false, phase: 0 });
+    game.letters.push({ lane: 1, z: 3, y: 0.5, char: 'L', taken: false, phase: 0 });
+    const base = emptyGame();
+    simulate(game, 0.5);
+    simulate(base, 0.5);
+    expect(game.speed / base.speed).toBeLessThanOrEqual(1 + BOOST_GAIN + 1e-9);
+  });
+
+  describe('leaning ladder (on the left wall)', () => {
+    it('hits in the middle lane unless you jump', () => {
+      const stay = emptyGame();
+      addLadder(stay, -1, 5);
+      simulate(stay, 1.2);
+      expect(stay.hearts).toBe(2);
+
+      const jump = emptyGame();
+      addLadder(jump, -1, 5);
+      simulate(jump, 1.2, { 15: 'jump' });
+      expect(jump.hearts).toBe(3);
+    });
+
+    it('lets you glide under it in the wall-side lane, but not jump there', () => {
+      const under = emptyGame();
+      addLadder(under, -1, 5);
+      simulate(under, 1.2, { 2: 'left' });
+      expect(under.hearts).toBe(3);
+
+      const jumpUnder = emptyGame();
+      addLadder(jumpUnder, -1, 5);
+      simulate(jumpUnder, 1.2, { 2: 'left', 15: 'jump' });
+      expect(jumpUnder.hearts).toBe(2);
+    });
+
+    it('leaves the far lane open', () => {
+      const game = emptyGame();
+      addLadder(game, -1, 5);
+      simulate(game, 1.2, { 2: 'right' });
+      expect(game.hearts).toBe(3);
+    });
   });
 
   it('spawns obstacles during a normal run', () => {

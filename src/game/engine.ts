@@ -1,7 +1,7 @@
 // Runner game state and rules. Pure logic: no drawing, no DOM.
 // World units: x = sideways (lanes), y = up, z = distance ahead of the player.
 
-import { createRng, Spawner, type ObstacleKind } from './spawner';
+import { createRng, ladderHeightAt, ladderLine, Spawner, type ObstacleKind } from './spawner';
 
 export const LANE_X = [-1.1, 0, 1.1];
 export const SPAWN_Z = 46;
@@ -24,6 +24,13 @@ const START_HEARTS = 3;
 const INVULNERABLE_SECONDS = 1.2;
 const FIRST_ROW_DELAY = 22;
 
+// Letters give a speed burst: +20% that fades out over 3 seconds. Another letter
+// refills it rather than stacking, so top speed stays fair (≈ 0.65s to react at most).
+export const BOOST_GAIN = 0.2;
+export const BOOST_SECONDS = 3;
+/** Half thickness of a ladder rail, for collisions. */
+const LADDER_HALF_THICKNESS = 0.06;
+
 export type Action = 'left' | 'right' | 'jump';
 export type Mode = 'attract' | 'run' | 'over';
 export type EndReason = 'time' | 'hearts';
@@ -31,6 +38,7 @@ export type EndReason = 'time' | 'hearts';
 export interface Obstacle {
   kind: ObstacleKind;
   lanes: number[];
+  side?: -1 | 1;
   z: number;
   depth: number;
   height: number;
@@ -65,7 +73,8 @@ export class Game {
   /** Total distance travelled; drives floor/shelf scrolling. */
   distance = 0;
   hearts = START_HEARTS;
-  lettersCollected = 0;
+  /** 0..1, remaining speed boost from the last letter. */
+  boost = 0;
   invulnerableFor = 0;
   /** 0..1, how strongly to flash the screen after a hit. */
   flash = 0;
@@ -89,8 +98,9 @@ export class Game {
     this.spawner = new Spawner(this.rng);
   }
 
+  /** Score is simply the distance covered; boosts help by covering more ground. */
   get score(): number {
-    return Math.floor(this.runDistance) + this.lettersCollected * 10;
+    return Math.floor(this.runDistance);
   }
 
   get onGround(): boolean {
@@ -104,7 +114,7 @@ export class Game {
     this.elapsed = 0;
     this.speed = START_SPEED;
     this.hearts = START_HEARTS;
-    this.lettersCollected = 0;
+    this.boost = 0;
     this.runDistance = 0;
     this.obstacles = [];
     this.letters = [];
@@ -122,11 +132,15 @@ export class Game {
     const events: GameEvent[] = [];
     if (this.mode === 'run') for (const a of actions) this.act(a);
 
-    // Speed: ramps up during a run, coasts to a stop after it.
+    // Speed: ramps up during a run (plus any letter boost), coasts to a stop after it.
     if (this.mode === 'run') {
       this.elapsed += dt;
-      this.speed = START_SPEED + MAX_EXTRA_SPEED * (1 - Math.exp(-this.elapsed / 25));
+      this.boost = Math.max(0, this.boost - dt / BOOST_SECONDS);
+      const base = START_SPEED + MAX_EXTRA_SPEED * (1 - Math.exp(-this.elapsed / 25));
+      const eased = this.boost * this.boost * (3 - 2 * this.boost); // smoothstep: gentle fade-out
+      this.speed = base * (1 + BOOST_GAIN * eased);
     } else if (this.mode === 'over') {
+      this.boost = 0;
       this.speed = Math.max(0, this.speed - this.speed * 3 * dt);
     } else {
       this.speed = ATTRACT_SPEED;
@@ -181,16 +195,24 @@ export class Game {
 
   private checkCollisions(events: GameEvent[]): void {
     const bottom = HOVER_Y + this.jumpY - SPARK_HALF_HEIGHT;
+    const top = HOVER_Y + this.jumpY + SPARK_HALF_HEIGHT;
     const centerY = HOVER_Y + this.jumpY;
 
     if (this.invulnerableFor <= 0) {
       for (const o of this.obstacles) {
         if (o.hit) continue;
-        const x0 = LANE_X[Math.min(...o.lanes)] - 0.45;
-        const x1 = LANE_X[Math.max(...o.lanes)] + 0.45;
-        const overlapX = this.x + SPARK_HALF_WIDTH > x0 && this.x - SPARK_HALF_WIDTH < x1;
         const overlapZ = SPARK_HALF_DEPTH > o.z && -SPARK_HALF_DEPTH < o.z + o.depth;
-        if (overlapX && overlapZ && bottom < o.height) {
+        if (!overlapZ) continue;
+        let hit: boolean;
+        if (o.kind === 'ladder' && o.side) {
+          hit = this.touchesLadder(o.side, bottom, top);
+        } else {
+          const x0 = LANE_X[Math.min(...o.lanes)] - 0.45;
+          const x1 = LANE_X[Math.max(...o.lanes)] + 0.45;
+          const overlapX = this.x + SPARK_HALF_WIDTH > x0 && this.x - SPARK_HALF_WIDTH < x1;
+          hit = overlapX && bottom < o.height;
+        }
+        if (hit) {
           o.hit = true;
           this.hearts--;
           this.invulnerableFor = INVULNERABLE_SECONDS;
@@ -206,10 +228,23 @@ export class Game {
       const lx = LANE_X[l.lane];
       if (Math.abs(lx - this.x) < 0.5 && Math.abs(l.z) < 0.6 && Math.abs(l.y - centerY) < 0.6) {
         l.taken = true;
-        this.lettersCollected++;
+        this.boost = 1;
         events.push({ type: 'collect', x: lx, y: l.y, z: l.z });
       }
     }
+  }
+
+  /** Whether the spark's body overlaps the slanted ladder at its current x. */
+  private touchesLadder(side: -1 | 1, bottom: number, top: number): boolean {
+    const { footX, topX } = ladderLine(side);
+    const lo = Math.max(this.x - SPARK_HALF_WIDTH, Math.min(footX, topX));
+    const hi = Math.min(this.x + SPARK_HALF_WIDTH, Math.max(footX, topX));
+    if (lo > hi) return false;
+    const a = ladderHeightAt(side, lo) ?? 0;
+    const b = ladderHeightAt(side, hi) ?? 0;
+    const ladderBottom = Math.min(a, b) - LADDER_HALF_THICKNESS;
+    const ladderTop = Math.max(a, b) + LADDER_HALF_THICKNESS;
+    return bottom < ladderTop && top > ladderBottom;
   }
 
   private end(reason: EndReason, events: GameEvent[]): void {

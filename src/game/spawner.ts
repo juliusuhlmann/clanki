@@ -7,6 +7,8 @@ export interface ObstacleSpec {
   kind: ObstacleKind;
   /** Lane indices (0 = left, 1 = middle, 2 = right) the obstacle blocks. */
   lanes: number[];
+  /** Ladders only: the wall it leans on (-1 = left, 1 = right). */
+  side?: -1 | 1;
   /** Depth along the track, in world units. */
   depth: number;
   /** Height in world units; only piles are low enough to jump over. */
@@ -33,7 +35,27 @@ export interface Row {
 
 export const PILE_HEIGHT = 0.5;
 export const CART_HEIGHT = 1.45;
-export const LADDER_HEIGHT = 2.8;
+
+// A ladder leans across the corridor: its foot stands on the floor just past the
+// middle lane, its top rests on the bookshelf. Low over the middle lane (jump it),
+// high over the wall-side lane (glide under it), absent over the far lane.
+export const WALL_X = 2.35;
+export const LADDER_TOP_Y = 3.6;
+export const LADDER_FOOT_X = 0.3;
+/** Distance between the two rails (along the track), wide enough to see the rungs. */
+export const LADDER_DEPTH = 0.9;
+
+/** The ladder's line in the x/y plane: foot on the floor, top against the wall. */
+export function ladderLine(side: -1 | 1): { footX: number; topX: number; topY: number } {
+  return { footX: -side * LADDER_FOOT_X, topX: side * WALL_X, topY: LADDER_TOP_Y };
+}
+
+/** Height of the ladder at sideways position x, or null where there is no ladder. */
+export function ladderHeightAt(side: -1 | 1, x: number): number | null {
+  const { footX, topX, topY } = ladderLine(side);
+  const t = (x - footX) / (topX - footX);
+  return t < 0 || t > 1 ? null : t * topY;
+}
 
 const WORD = 'CLANKI';
 const LETTER_SPACING = 2.2;
@@ -113,12 +135,15 @@ export class Spawner {
         .map((l) => (this.rng() < 0.5 ? this.pile(l) : this.cart(l)));
       if (this.rng() < 0.5) letters = this.letterLine(free, 3);
     } else if (roll < 0.85) {
-      const start = this.pick([0, 1]);
+      const side: -1 | 1 = this.rng() < 0.5 ? -1 : 1;
+      const underLane = side < 0 ? 0 : 2;
+      const farLane = side < 0 ? 2 : 0;
       obstacles = [
-        { kind: 'ladder', lanes: [start, start + 1], depth: 0.25, height: LADDER_HEIGHT, variant: this.variant() },
+        { kind: 'ladder', lanes: [1], side, depth: LADDER_DEPTH, height: LADDER_TOP_Y, variant: this.variant() },
       ];
-      const free = start === 0 ? 2 : 0;
-      if (this.rng() < 0.6) letters = this.letterLine(free, 3);
+      // Sometimes a book cart stands in the far lane: go under the ladder or jump it.
+      if (this.rng() < 0.5) obstacles.push(this.cart(farLane));
+      if (this.rng() < 0.5) letters = this.letterLine(underLane, 3);
     } else {
       letters = this.letterLine(this.pick(lanes), 5);
       extra = 5 * LETTER_SPACING;

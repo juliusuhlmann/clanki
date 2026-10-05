@@ -23,7 +23,6 @@
 
   let phase = $state<'intro' | 'playing' | 'results'>('intro');
   let score = $state(0);
-  let letters = $state(0);
   let best = $state(0);
   let newBest = $state(false);
   let endReason = $state<'time' | 'hearts' | null>(null);
@@ -36,7 +35,7 @@
   let resultsAt = 0;
 
   const touch = matchMedia('(pointer: coarse)').matches;
-  const hint = touch ? 'Swipe ← → to dodge · swipe up or tap to jump' : '← → to dodge · ↑ or Space to jump';
+  const hint = touch ? 'Swipe to dodge · tap to jump · letters = boost' : '← → dodge · ↑ / Space jump · letters = boost';
 
   onMount(() => {
     game = new Game();
@@ -105,7 +104,6 @@
     input = null;
     endReason = reason;
     score = game.score;
-    letters = game.lettersCollected;
     if (score > best) {
       newBest = best > 0;
       best = score;
@@ -161,7 +159,7 @@
       <div class="sheet">
         <p class="kicker">{endReason === 'hearts' ? 'Out of hearts' : "Time's up"}</p>
         <h2>{score}</h2>
-        <p class="muted small">{letters} letters collected</p>
+        <p class="muted small">metres through the library</p>
         <p class="best">{newBest ? '✦ New best!' : `Best: ${best}`}</p>
         <div class="buttons">
           <button class="btn primary big" onclick={onfinish}>{practice ? 'Done' : 'Back to cards'}</button>

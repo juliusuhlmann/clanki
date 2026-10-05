@@ -1,7 +1,7 @@
 // Draws the library corridor, obstacles, the spark and the HUD on a 2D canvas.
 
 import { HOVER_Y, LANE_X, type Game, type Letter, type Obstacle } from './engine';
-import { createRng } from './spawner';
+import { createRng, ladderLine, WALL_X } from './spawner';
 import { drawSpark } from './spark';
 import { BOOK_COLORS, makeLetterSprite, makeShelfTextures, makeVignette } from './textures';
 
@@ -11,7 +11,6 @@ const CAM_BACK = 3.2;
 const CAM_FOLLOW = 0.85; // how far the camera follows the spark sideways (1 = fully)
 const NEAR = -2.6;
 const FAR = 46;
-const WALL_X = 2.35;
 const SHELF_H = 3.6; // one bookshelf tier; walls are two tiers high
 const CEIL_Y = SHELF_H * 2;
 const CARPET_X = 1.75;
@@ -167,6 +166,7 @@ export class Renderer {
     this.updateParticles(game, dt);
     this.drawObjects(game);
     this.drawDust(dt);
+    if (game.boost > 0) this.drawSpeedLines(game.boost);
 
     if (this.vignette) ctx.drawImage(this.vignette, 0, 0, this.w, this.h);
     if (game.flash > 0) {
@@ -497,27 +497,64 @@ export class Renderer {
         this.ctx.arc(w.x, w.y, Math.max(0.5, 0.03 * w.s), 0, Math.PI * 2);
         this.ctx.fill();
       }
-    } else {
-      // Rolling library ladder blocking two lanes.
-      const x0 = LANE_X[Math.min(...o.lanes)] - 0.5;
-      const x1 = LANE_X[Math.max(...o.lanes)] + 0.5;
-      const z0 = o.z;
-      const z1 = o.z + o.depth;
-      this.floorShadow(x0, x1, z0, z1, 0.35);
-      for (let y = 0.28; y < o.height - 0.15; y += 0.3) {
-        this.box(x0 + 0.08, x1 - 0.08, y, y + 0.06, z0 + 0.06, z1 - 0.06, '#9a6a3c');
-      }
-      this.box(x0, x0 + 0.1, 0, o.height, z0, z1, '#7a4f2c');
-      this.box(x1 - 0.1, x1, 0, o.height, z0, z1, '#7a4f2c');
-      // Brass wheels.
-      const f = fogAt(z0);
-      for (const wx of [x0 + 0.05, x1 - 0.05]) {
-        const w = this.p(wx, 0.06, z0);
-        this.ctx.fillStyle = fogged('#c9a24a', f);
-        this.ctx.beginPath();
-        this.ctx.arc(w.x, w.y, Math.max(1, 0.07 * w.s), 0, Math.PI * 2);
-        this.ctx.fill();
-      }
+    } else if (o.side) {
+      this.drawLadder(o.side, o.z, o.z + o.depth);
+    }
+  }
+
+  /** A wooden library ladder leaning across the corridor against one bookshelf. */
+  private drawLadder(side: -1 | 1, z0: number, z1: number): void {
+    const ctx = this.ctx;
+    const f = fogAt(z0);
+    const { footX, topX, topY } = ladderLine(side);
+    const len = Math.hypot(topX - footX, topY);
+    // Unit vector along the ladder and its perpendicular in the x/y plane.
+    const ux = (topX - footX) / len;
+    const uy = topY / len;
+    const half = 0.07;
+    const nx = -uy * half;
+    const ny = ux * half;
+
+    // Faint shadow on the floor beneath it.
+    this.quad(this.p(footX, 0.002, z0 - 0.05), this.p(topX, 0.002, z0 - 0.05), this.p(topX, 0.002, z1 + 0.15), this.p(footX, 0.002, z1 + 0.15), `rgba(10,4,2,${0.25 * (1 - f)})`);
+
+    const rail = (z: number, color: string) => {
+      this.quad(this.p(footX + nx, ny, z), this.p(topX + nx, topY + ny, z), this.p(topX - nx, topY - ny, z), this.p(footX - nx, -ny, z), color);
+    };
+
+    // Back rail (with a darker edge for thickness), then rungs, then the front rail.
+    rail(z1 + 0.06, fogged('#5a3a20', f));
+    rail(z1, fogged('#7a4f2c', f, -0.1));
+
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = fogged('#a8784a', f);
+    for (let d = 0.32; d < len - 0.15; d += 0.34) {
+      const x = footX + ux * d;
+      const y = uy * d;
+      const a = this.p(x, y, z1 - 0.02);
+      const b = this.p(x, y, z0 + 0.02);
+      ctx.lineWidth = Math.max(1.5, 0.075 * ((a.s + b.s) / 2));
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+
+    rail(z0 + 0.06, fogged('#5a3a20', f));
+    rail(z0, fogged('#8a5a33', f));
+
+    // Rubber feet on the floor and brass hooks over the shelf.
+    for (const z of [z0, z1]) {
+      const foot = this.p(footX, 0.03, z);
+      ctx.fillStyle = fogged('#1b1410', f);
+      ctx.beginPath();
+      ctx.arc(foot.x, foot.y, Math.max(1, 0.06 * foot.s), 0, Math.PI * 2);
+      ctx.fill();
+      const hook = this.p(topX - side * 0.04, topY, z);
+      ctx.fillStyle = fogged('#d8b25a', f);
+      ctx.beginPath();
+      ctx.arc(hook.x, hook.y, Math.max(1, 0.05 * hook.s), 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
@@ -667,6 +704,31 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(d.x * this.w, d.y * this.h, d.r, 0, Math.PI * 2);
       ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /** Warm streaks rushing out from the vanishing point while boosted. */
+  private drawSpeedLines(boost: number): void {
+    const ctx = this.ctx;
+    const vx = this.cx;
+    const vy = this.hy;
+    const maxR = Math.hypot(this.w, this.h);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 28; i++) {
+      const angle = (i / 28) * Math.PI * 2;
+      // Each streak travels outward; phase offsets keep them staggered.
+      const phase = (this.t * 2.2 + (hash(i * 7) % 1000) / 1000) % 1;
+      const r0 = maxR * (0.15 + phase * 0.55);
+      const r1 = r0 + maxR * (0.06 + phase * 0.12);
+      const a = boost * 0.5 * Math.sin(phase * Math.PI);
+      ctx.strokeStyle = `rgba(255,214,150,${a})`;
+      ctx.lineWidth = 1.5 + phase * 2.5;
+      ctx.beginPath();
+      ctx.moveTo(vx + Math.cos(angle) * r0, vy + Math.sin(angle) * r0);
+      ctx.lineTo(vx + Math.cos(angle) * r1, vy + Math.sin(angle) * r1);
+      ctx.stroke();
     }
     ctx.globalCompositeOperation = 'source-over';
   }
