@@ -9,12 +9,15 @@
   let {
     seconds,
     earned,
+    practice = false,
     onfinish,
   }: {
     /** Length of the run. */
     seconds: number;
     /** Seconds earned by the cards since the last run (for the intro). */
     earned: number;
+    /** A free run started from the deck list rather than earned by studying. */
+    practice?: boolean;
     onfinish: () => void;
   } = $props();
 
@@ -132,11 +135,13 @@
   {#if phase === 'intro'}
     <div class="overlay">
       <div class="sheet">
-        <p class="kicker">Break time</p>
+        <p class="kicker">{practice ? 'Practice' : 'Break time'}</p>
         <h2>Library run</h2>
         <p class="time">{seconds}s</p>
         <p class="muted small">
-          {#if earned === 0}
+          {#if practice}
+            A free practice run. During study, runs come every 6–10 cards.
+          {:else if earned === 0}
             15s base. Answer Good or Easy to earn more.
           {:else if seconds >= MAX_SECONDS && 15 + earned > MAX_SECONDS}
             {earned}s earned by your answers – that's the {MAX_SECONDS}s maximum!
@@ -159,7 +164,7 @@
         <p class="muted small">{letters} letters collected</p>
         <p class="best">{newBest ? '✦ New best!' : `Best: ${best}`}</p>
         <div class="buttons">
-          <button class="btn primary big" onclick={onfinish}>Back to cards</button>
+          <button class="btn primary big" onclick={onfinish}>{practice ? 'Done' : 'Back to cards'}</button>
         </div>
       </div>
     </div>

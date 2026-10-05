@@ -26,7 +26,8 @@ Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
 - 3 hearts; a hit costs a heart, flashes the screen and vibrates the phone; the run ends when time or hearts run out
 - Appears every 6–10 cards (random). Length = 15s + earned seconds (Again 0, Hard +2, Good +4, Easy +4), max 40s. A bonus run is offered at the end of a session if ≥3 cards were answered since the last run
 - Skippable, and can be turned off in Settings. The game never affects scheduling
-- Dev only: `#/dev-runner` opens the game directly; `window.__runner` exposes `{ game, paused }` for inspection
+- "Try the library run" on the deck list (`#/run`) starts a free 30s practice run
+- Dev only: `window.__runner` exposes `{ game, paused }` for inspection
 
 ## Scheduling and exam mode
 

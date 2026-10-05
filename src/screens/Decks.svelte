@@ -93,3 +93,5 @@
   <input bind:value={newName} placeholder="New deck name" aria-label="New deck name" />
   <button class="btn primary" type="submit" disabled={!newName.trim()}>Add deck</button>
 </form>
+
+<a class="btn practice" href={href({ name: 'practiceRun' })}>✦ Try the library run</a>

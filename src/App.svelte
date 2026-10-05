@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { router, href } from './lib/router.svelte';
+  import { router, href, navigate } from './lib/router.svelte';
   import Decks from './screens/Decks.svelte';
   import Deck from './screens/Deck.svelte';
   import Review from './screens/Review.svelte';
@@ -33,7 +33,7 @@
     {/key}
   {:else if router.route.name === 'settings'}
     <Settings />
-  {:else if router.route.name === 'devRunner'}
-    <RunnerGame seconds={40} earned={20} onfinish={() => history.back()} />
+  {:else if router.route.name === 'practiceRun'}
+    <RunnerGame seconds={30} earned={0} practice onfinish={() => navigate({ name: 'decks' })} />
   {/if}
 </main>

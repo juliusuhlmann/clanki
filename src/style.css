@@ -343,6 +343,13 @@ kbd {
   margin-top: 0.5rem;
 }
 
+.btn.practice {
+  margin-top: 1.5rem;
+  width: 100%;
+  color: var(--accent);
+  border-color: rgba(217, 119, 87, 0.45);
+}
+
 /* Cards */
 
 .card-form {
