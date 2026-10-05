@@ -1,10 +1,12 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // GitHub Pages serves the app from /clanki/ (the repo name).
 export default defineConfig({
   base: '/clanki/',
   plugins: [
+    svelte(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/icon.svg'],
@@ -29,4 +31,8 @@ export default defineConfig({
       },
     }),
   ],
+  test: {
+    environment: 'node',
+    setupFiles: ['fake-indexeddb/auto'],
+  },
 });

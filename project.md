@@ -8,7 +8,13 @@ _TODO_
 
 ## Core features
 
-_TODO_
+Done (steps 2–3):
+- Decks: create, rename, delete; deck list shows due / new counts
+- Cards: add, edit, delete, search (plain multi-line text)
+- Review: show answer → Again / Hard / Good / Easy with interval previews; keyboard shortcuts (Space, 1–4)
+- FSRS scheduling (ts-fsrs, 90% target retention, fuzz on); cards in learning steps return in the same session (20-minute learn-ahead)
+- Daily new-card limit per deck (default 20); the study day starts at 4:00
+- Hash routing, so Android's back button moves between screens
 
 ## The game
 
@@ -20,7 +26,10 @@ _TODO_
 
 ## Tech stack
 
-- PWA: Vite + TypeScript, vite-plugin-pwa (service worker + manifest)
+- PWA: Vite + TypeScript + Svelte 5, vite-plugin-pwa (service worker + manifest)
+- Storage: Dexie (IndexedDB); scheduling: ts-fsrs
+- Tests: vitest + fake-indexeddb (`npm test`); `npm run build` runs svelte-check first
+- TypeScript is pinned to 6.x because svelte-check doesn't support TS 7 yet
 - Target devices: Windows laptop (browser) and Android phone (installed PWA)
 - Repo: https://github.com/juliusuhlmann/clanki
 - Live app: https://juliusuhlmann.github.io/clanki/
@@ -28,7 +37,10 @@ _TODO_
 
 ## Data and sync
 
-_TODO_
+- Everything is stored on the device in IndexedDB (Dexie), in `src/lib/db.ts`: tables `decks`, `cards` (FSRS state + indexed `due`), `reviews` (an append-only log of every answer, for future exam mode, stats and the leech boss) and `settings`
+- Backup: Settings → Export downloads `clanki-backup-YYYY-MM-DD.json`; Import merges it (new items added, the newer `updatedAt` wins, reviews deduplicated) after showing a summary
+- Moving cards between laptop and phone currently means export on one device and import on the other
+- Known limitation: deletions don't sync. Importing an older backup brings deleted cards back
 
 ## Roadmap
 
