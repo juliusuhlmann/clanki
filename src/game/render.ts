@@ -8,6 +8,7 @@ import { BOOK_COLORS, makeLetterSprite, makeShelfTextures, makeVignette } from '
 // Camera and corridor dimensions, in world units.
 const CAM_Y = 2.1;
 const CAM_BACK = 3.2;
+const CAM_FOLLOW = 0.85; // how far the camera follows the spark sideways (1 = fully)
 const NEAR = -2.6;
 const FAR = 46;
 const WALL_X = 2.35;
@@ -80,6 +81,8 @@ export class Renderer {
   private cx = 0;
   private hy = 0;
   private t = 0;
+  /** Camera's sideways position; follows the spark so lane changes shift the perspective. */
+  private camX = 0;
 
   private shelves = makeShelfTextures(6);
   private letterSprites = new Map<string, HTMLCanvasElement>();
@@ -113,7 +116,7 @@ export class Renderer {
 
   private p(x: number, y: number, z: number): Projected {
     const d = Math.max(0.05, z + CAM_BACK);
-    return { x: this.cx + (x * this.kx) / d, y: this.hy + ((CAM_Y - y) * this.ky) / d, s: (this.kx + this.ky) / 2 / d };
+    return { x: this.cx + ((x - this.camX) * this.kx) / d, y: this.hy + ((CAM_Y - y) * this.ky) / d, s: (this.kx + this.ky) / 2 / d };
   }
 
   private quad(a: Projected, b: Projected, c: Projected, d: Projected, fill: string | CanvasGradient): void {
@@ -149,6 +152,8 @@ export class Renderer {
 
   render(game: Game, dt: number, hud: HudInfo): void {
     this.t += dt;
+    // Follow the spark most of the way, slightly lagging, like other lane runners.
+    this.camX += (game.x * CAM_FOLLOW - this.camX) * Math.min(1, dt * 9);
     const ctx = this.ctx;
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
@@ -401,9 +406,10 @@ export class Renderer {
     if (y1 < CAM_Y) {
       this.quad(this.p(x0, y1, z0), this.p(x1, y1, z0), this.p(x1, y1, z1), this.p(x0, y1, z1), fogged(color, f, 0.18));
     }
-    if (x0 > 0) {
+    // Show the side that faces the camera.
+    if (x0 > this.camX) {
       this.quad(this.p(x0, y0, z0), this.p(x0, y1, z0), this.p(x0, y1, z1), this.p(x0, y0, z1), fogged(color, f, -0.35));
-    } else if (x1 < 0) {
+    } else if (x1 < this.camX) {
       this.quad(this.p(x1, y0, z0), this.p(x1, y1, z0), this.p(x1, y1, z1), this.p(x1, y0, z1), fogged(color, f, -0.35));
     }
     this.quad(this.p(x0, y0, z0), this.p(x1, y0, z0), this.p(x1, y1, z0), this.p(x0, y1, z0), fogged(color, f));
