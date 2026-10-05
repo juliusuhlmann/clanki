@@ -34,6 +34,14 @@ Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
 
 _TODO_
 
+## Design
+
+"Reading room", Claude-desktop-like, in `src/style.css`:
+- Warm ivory light mode / warm charcoal dark mode (follows the system), terracotta `#d97757` only for primary actions
+- Serif headings (Source Serif 4, bundled for offline use), system sans for UI text, soft 1px borders
+- The mark (`src/lib/mark.ts`): Claude-style starburst of 12 tapered rays; used for the logo, the runner and the app icon (ivory tile)
+- Game ties: flashcards are library catalogue cards; a run meter during review shows the spark moving toward the next run, with "+4s" when an answer earns time; a dark "library run" tile on the home screen
+
 ## Tech stack
 
 - PWA: Vite + TypeScript + Svelte 5, vite-plugin-pwa (service worker + manifest)
@@ -43,7 +51,7 @@ _TODO_
 - Target devices: Windows laptop (browser) and Android phone (installed PWA)
 - Repo: https://github.com/juliusuhlmann/clanki
 - Live app: https://juliusuhlmann.github.io/clanki/
-- Deploy: `npm run deploy` builds and publishes `dist/` to the `gh-pages` branch
+- Deploy: every push to `main` runs `.github/workflows/deploy.yml` (install, test, build, publish to GitHub Pages). Watch it with `gh run watch` or on the repo's Actions tab
 
 ## Data and sync
 

@@ -29,10 +29,15 @@
 
   // Runner game between cards. Only ratings feed in; the game never affects scheduling.
   let gamesEnabled = $state(false);
-  let gap = nextGap();
+  let gap = $state(nextGap());
   let ratingsSinceRun = $state<number[]>([]);
   let playing = $state(false);
   let run = $state({ seconds: 0, earned: 0 });
+  /** "+4s" feedback after an answer that earned run time; key restarts the animation. */
+  let toast = $state<{ text: string; key: number } | null>(null);
+
+  const meterProgress = $derived(Math.min(1, ratingsSinceRun.length / gap));
+  const cardsToRun = $derived(Math.max(0, gap - ratingsSinceRun.length));
 
   onMount(async () => {
     deckName = (await db.decks.get(deckId))?.name ?? '';
@@ -80,6 +85,8 @@
       session.answered(updated, now);
       reviewedCount++;
       ratingsSinceRun = [...ratingsSinceRun, grade];
+      const gained = earnedSeconds([grade]);
+      if (gamesEnabled && gained > 0) toast = { text: `+${gained}s`, key: now };
       showNext();
       if (gamesEnabled && current && ratingsSinceRun.length >= gap) startRun();
     } finally {
@@ -106,21 +113,49 @@
 <svelte:window onkeydown={onKeydown} />
 
 <div class="review">
-  <div class="title-row">
-    <a class="back" href={href({ name: 'deck', deckId })}>← {deckName || 'Deck'}</a>
+  <div class="review-top">
+    <a class="back" href={href({ name: 'deck', deckId })} aria-label="Back to deck">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M18 6 6 18M6 6l12 12" />
+      </svg>
+    </a>
+    {#if current && gamesEnabled}
+      <!-- Run meter: the spark travels toward the next library run. -->
+      <div class="run-meter" aria-label="{cardsToRun} cards until the next library run">
+        <div class="run-meter-track">
+          <div class="run-meter-fill" style="width: {meterProgress * 100}%"></div>
+          <span class="run-meter-spark" style="left: {meterProgress * 100}%"><Mark size={18} /></span>
+          {#key toast?.key}
+            {#if toast}<span class="earned-toast">{toast.text}</span>{/if}
+          {/key}
+        </div>
+        <div class="run-meter-label">
+          <span>{cardsToRun === 0 ? 'Run next!' : `Run in ${cardsToRun} card${cardsToRun === 1 ? '' : 's'}`}</span>
+          <span>{runSeconds(ratingsSinceRun)}s banked</span>
+        </div>
+      </div>
+    {:else}
+      <span class="spacer"></span>
+    {/if}
     {#if current}<span class="muted small">{remaining} left</span>{/if}
   </div>
 
   {#if loading}
     <p class="muted">Loading…</p>
   {:else if current}
-    <div class="flashcard panel">
-      <p class="front">{current.front}</p>
-      {#if revealed}
-        <hr />
-        <p class="answer">{current.back}</p>
-      {/if}
-    </div>
+    <article class="catalog-card">
+      <div class="catalog-head">
+        <span>{deckName}</span>
+        <span>No. {reviewedCount + 1}</span>
+      </div>
+      <div class="catalog-body">
+        <p class="front">{current.front}</p>
+        {#if revealed}
+          <hr />
+          <p class="answer">{current.back}</p>
+        {/if}
+      </div>
+    </article>
 
     <div class="answer-bar">
       {#if !revealed}
@@ -128,30 +163,30 @@
       {:else if intervals}
         {#each BUTTONS as b (b.grade)}
           <button class="btn grade grade-{b.label.toLowerCase()}" onclick={() => answer(b.grade)}>
+            <span class="grade-label">{b.label}</span>
             <span class="grade-interval">{intervals[b.grade]}</span>
-            <span>{b.label}</span>
             <kbd>{b.key}</kbd>
           </button>
         {/each}
       {/if}
     </div>
   {:else}
-    <div class="done panel">
-      <Mark size={64} class="spark" />
-      <h2>Done for today</h2>
+    <div class="done">
+      <Mark size={72} class="spark" />
+      <h1>{reviewedCount === 0 ? 'Nothing due' : 'That’s all for now'}</h1>
       <p class="muted">
         {reviewedCount === 0
-          ? 'Nothing due right now.'
-          : `You reviewed ${reviewedCount} card${reviewedCount === 1 ? '' : 's'}.`}
+          ? 'Come back later. New cards and reviews will be waiting.'
+          : `You reviewed ${reviewedCount} card${reviewedCount === 1 ? '' : 's'}. See you on the next round.`}
       </p>
-      {#if gamesEnabled && ratingsSinceRun.length >= 3}
-        <button class="btn primary" onclick={startRun}>
-          Bonus run ({runSeconds(ratingsSinceRun)}s)
-        </button>
-      {/if}
-      <a class="btn" class:primary={!(gamesEnabled && ratingsSinceRun.length >= 3)} href={href({ name: 'decks' })}
-        >Back to decks</a
-      >
+      <div class="actions">
+        {#if gamesEnabled && ratingsSinceRun.length >= 3}
+          <button class="btn primary" onclick={startRun}>Bonus library run · {runSeconds(ratingsSinceRun)}s</button>
+        {/if}
+        <a class="btn" class:primary={!(gamesEnabled && ratingsSinceRun.length >= 3)} href={href({ name: 'decks' })}
+          >Back to decks</a
+        >
+      </div>
     </div>
   {/if}
 </div>

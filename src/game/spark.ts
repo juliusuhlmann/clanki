@@ -1,6 +1,6 @@
 // The player character: the Claude-style starburst with a glow and eyes.
 
-import { MARK_COLOR, RAY_WIDTH, rayEnds } from '../lib/mark';
+import { MARK_COLOR, markPath } from '../lib/mark';
 
 export interface SparkPose {
   /** Seconds, drives idle animation. */
@@ -13,15 +13,8 @@ export interface SparkPose {
   alpha: number;
 }
 
-function strokeRays(ctx: CanvasRenderingContext2D, r: number, width: number): void {
-  ctx.beginPath();
-  for (const p of rayEnds(0, 0, r)) {
-    ctx.moveTo(0, 0);
-    ctx.lineTo(p.x, p.y);
-  }
-  ctx.lineWidth = width;
-  ctx.stroke();
-}
+// The mark at unit radius, scaled when drawn.
+const UNIT_MARK = new Path2D(markPath(0, 0, 1));
 
 export function drawSpark(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, pose: SparkPose): void {
   const { t, tilt, air, alpha } = pose;
@@ -48,9 +41,13 @@ export function drawSpark(ctx: CanvasRenderingContext2D, x: number, y: number, r
   // Body: the flat starburst, like the logo, swaying gently.
   ctx.save();
   ctx.rotate(Math.sin(t * 1.4) * 0.12);
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = MARK_COLOR;
-  strokeRays(ctx, r, r * RAY_WIDTH);
+  ctx.scale(r, r);
+  ctx.fillStyle = MARK_COLOR;
+  ctx.fill(UNIT_MARK);
+  // A solid core so the eyes always sit on orange.
+  ctx.beginPath();
+  ctx.arc(0, 0, 0.28, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 
   const blink = t % 3.7 < 0.12 ? 0.12 : 1;

@@ -201,11 +201,23 @@
     width: min(100%, 22rem);
     padding: 1.75rem 1.5rem 1.5rem;
     text-align: center;
-    background: rgba(36, 32, 28, 0.88);
-    border: 1px solid rgba(217, 119, 87, 0.35);
+    color: #f4ede4;
+    background: rgba(38, 26, 18, 0.82);
+    border: 1px solid rgba(242, 195, 91, 0.22);
     border-radius: 18px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(6px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 230, 190, 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .sheet .muted {
+    color: rgba(244, 237, 228, 0.65);
+  }
+
+  .sheet .btn:not(.primary) {
+    color: #f4ede4;
+    background: rgba(255, 240, 220, 0.06);
+    border-color: rgba(255, 240, 220, 0.14);
   }
 
   .kicker {
@@ -218,14 +230,17 @@
   }
 
   h2 {
-    margin: 0.25rem 0 0.25rem;
-    font-size: 2rem;
+    margin: 0.3rem 0 0.25rem;
+    font-size: 2.1rem;
+    color: #fff8ef;
   }
 
   .time {
-    margin: 0.25rem 0;
-    font-size: 2.6rem;
-    font-weight: 800;
+    margin: 0.1rem 0 0.4rem;
+    font-family: var(--serif);
+    font-size: 2.8rem;
+    font-weight: 600;
+    line-height: 1.1;
     color: #f2c35b;
   }
 

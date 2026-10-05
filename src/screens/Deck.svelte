@@ -4,6 +4,7 @@
   import { deckCounts, formatInterval, State } from '../lib/scheduler';
   import { createCard, updateCard, deleteCard } from '../lib/store';
   import { href } from '../lib/router.svelte';
+  import Mark from '../components/Mark.svelte';
 
   let { deckId }: { deckId: string } = $props();
 
@@ -62,33 +63,38 @@
 {#if $deck === undefined && $cards !== undefined}
   <p class="muted">This deck doesn't exist anymore.</p>
 {:else if $deck}
-  <div class="title-row">
-    <h1>{$deck.name}</h1>
-    {#if $counts}
-      <a
-        class="btn primary"
-        class:disabled={$counts.due + $counts.new === 0}
-        href={href({ name: 'review', deckId })}>Study ({$counts.due + $counts.new})</a
-      >
+  <div class="page-head title-row">
+    <div>
+      <h1>{$deck.name}</h1>
+      {#if $counts}
+        <p class="muted small">
+          {$counts.total} card{$counts.total === 1 ? '' : 's'}
+          {#if $counts.due + $counts.new > 0}· {$counts.due + $counts.new} to study today{/if}
+        </p>
+      {/if}
+    </div>
+    {#if $counts && $counts.due + $counts.new > 0}
+      <a class="btn primary" href={href({ name: 'review', deckId })}>Study</a>
     {/if}
   </div>
 
   <form class="panel card-form" onsubmit={addCard}>
-    <h2>Add card</h2>
+    <h2>New card</h2>
     <label>
       Front
-      <textarea bind:this={frontInput} bind:value={front} rows="2" onkeydown={submitOnCtrlEnter}></textarea>
+      <textarea bind:this={frontInput} bind:value={front} rows="2" placeholder="Question or term" onkeydown={submitOnCtrlEnter}></textarea>
     </label>
     <label>
       Back
-      <textarea bind:value={back} rows="3" onkeydown={submitOnCtrlEnter}></textarea>
+      <textarea bind:value={back} rows="3" placeholder="Answer" onkeydown={submitOnCtrlEnter}></textarea>
     </label>
-    <button class="btn primary" type="submit" disabled={!front.trim() || !back.trim()}>Add card</button>
+    <div class="row">
+      <button class="btn primary" type="submit" disabled={!front.trim() || !back.trim()}>Add card</button>
+      <span class="muted small"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
+    </div>
   </form>
 
-  <div class="title-row">
-    <h2>Cards ({$cards?.length ?? 0})</h2>
-  </div>
+  <p class="section-label">Cards</p>
   {#if $cards && $cards.length > 0}
     <input type="search" bind:value={query} placeholder="Search cards" aria-label="Search cards" />
   {/if}
@@ -101,39 +107,44 @@
             <label>Front <textarea bind:value={editFront} rows="2"></textarea></label>
             <label>Back <textarea bind:value={editBack} rows="3"></textarea></label>
             <div class="row">
-              <button class="btn primary" type="submit">Save</button>
-              <button class="btn" type="button" onclick={() => (editingId = null)}>Cancel</button>
+              <button class="btn primary small" type="submit">Save</button>
+              <button class="btn ghost small" type="button" onclick={() => (editingId = null)}>Cancel</button>
             </div>
           </form>
         {:else if confirmDeleteId === card.id}
-          <p>Delete this card and its review history?</p>
-          <div class="row">
-            <button
-              class="btn danger"
-              onclick={async () => {
-                await deleteCard(card.id);
-                confirmDeleteId = null;
-              }}>Delete</button
-            >
-            <button class="btn" onclick={() => (confirmDeleteId = null)}>Cancel</button>
+          <div class="confirm">
+            <p>Delete this card and its review history?</p>
+            <div class="row">
+              <button
+                class="btn danger small"
+                onclick={async () => {
+                  await deleteCard(card.id);
+                  confirmDeleteId = null;
+                }}>Delete</button
+              >
+              <button class="btn ghost small" onclick={() => (confirmDeleteId = null)}>Cancel</button>
+            </div>
           </div>
         {:else}
-          <div class="card-text">
-            <p class="front">{card.front}</p>
-            <p class="back-text">{card.back}</p>
-          </div>
-          <div class="row card-meta">
-            <span class="muted small">{dueLabel(card.due, card.fsrs.state)}</span>
-            <span class="spacer"></span>
+          <div class="card-row">
+            <div class="card-text">
+              <p class="front">{card.front}</p>
+              <p class="back-text">{card.back}</p>
+              <p class="due-label">{dueLabel(card.due, card.fsrs.state)}</p>
+            </div>
             <button
-              class="btn small"
+              class="btn ghost small"
               onclick={() => {
                 editingId = card.id;
                 editFront = card.front;
                 editBack = card.back;
               }}>Edit</button
             >
-            <button class="btn small" onclick={() => (confirmDeleteId = card.id)}>Delete</button>
+            <button class="btn ghost small" aria-label="Delete card" onclick={() => (confirmDeleteId = card.id)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+              </svg>
+            </button>
           </div>
         {/if}
       </li>
@@ -141,7 +152,10 @@
       {#if $cards && $cards.length > 0}
         <p class="muted">No cards match "{query}".</p>
       {:else if $cards}
-        <p class="muted">No cards yet. Add one above.</p>
+        <div class="empty panel">
+          <Mark size={36} />
+          <p>No cards yet. Add your first one above.</p>
+        </div>
       {/if}
     {/each}
   </ul>

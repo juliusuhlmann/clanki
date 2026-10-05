@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'Clanki',
         short_name: 'Clanki',
         description: 'Spaced-repetition flashcards with a runner game between cards.',
-        theme_color: '#1a1714',
-        background_color: '#1a1714',
+        theme_color: '#faf9f5',
+        background_color: '#faf9f5',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/clanki/',
@@ -27,7 +27,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        // Fonts too, so the serif headings work offline. Only the Latin subsets are needed.
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}', '**/*latin-*.woff2'],
       },
     }),
   ],

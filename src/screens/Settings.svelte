@@ -70,53 +70,53 @@
 </script>
 
 <a class="back" href={href({ name: 'decks' })}>← Decks</a>
-<h1>Settings</h1>
+<div class="page-head">
+  <h1>Settings</h1>
+</div>
 
-<section class="panel">
-  <h2>Study</h2>
-  <label class="row">
-    New cards per day (per deck)
-    <input
-      type="number"
-      min="0"
-      max="999"
-      inputmode="numeric"
-      class="narrow"
-      bind:value={newPerDay}
-      onchange={saveNewPerDay}
-    />
-    {#if saved}<span class="muted small">Saved</span>{/if}
+<p class="section-label">Study</p>
+<section class="panel settings-group">
+  <label class="setting">
+    <span class="label">
+      New cards per day
+      <span class="hint">Per deck. {#if saved}<strong>Saved.</strong>{/if}</span>
+    </span>
+    <input type="number" min="0" max="999" inputmode="numeric" bind:value={newPerDay} onchange={saveNewPerDay} />
   </label>
-  <label class="row toggle">
+  <label class="setting">
+    <span class="label">
+      Library runs
+      <span class="hint">A short run through the library every 6–10 cards.</span>
+    </span>
     <input
       type="checkbox"
+      class="switch"
       bind:checked={gamesEnabled}
       onchange={() => setSetting('gamesEnabled', gamesEnabled)}
     />
-    Library runs between cards (every 6–10 cards)
   </label>
 </section>
 
-<section class="panel">
-  <h2>Backup</h2>
-  <p class="muted small">
-    Export a backup file to move your cards to another device or keep them safe. Importing merges: new cards are
-    added, and the newer version of a card wins.
-  </p>
-  <div class="row">
-    <button class="btn primary" onclick={doExport}>Export backup</button>
-    <button class="btn" onclick={() => fileInput?.click()}>Import backup…</button>
-    <input
-      bind:this={fileInput}
-      type="file"
-      accept="application/json,.json"
-      hidden
-      onchange={onFileChosen}
-    />
+<p class="section-label">Backup</p>
+<section class="panel settings-group">
+  <div class="setting">
+    <span class="label">
+      Export
+      <span class="hint">Save all decks, cards and history to a file.</span>
+    </span>
+    <button class="btn small" onclick={doExport}>Export</button>
+  </div>
+  <div class="setting">
+    <span class="label">
+      Import
+      <span class="hint">Merge a backup: new cards are added, the newer version of a card wins.</span>
+    </span>
+    <button class="btn small" onclick={() => fileInput?.click()}>Choose file…</button>
+    <input bind:this={fileInput} type="file" accept="application/json,.json" hidden onchange={onFileChosen} />
   </div>
 
-  {#if importError}<p class="error">{importError}</p>{/if}
-  {#if importDone}<p class="ok">{importDone}</p>{/if}
+  {#if importError}<p class="error import-summary">{importError}</p>{/if}
+  {#if importDone}<p class="ok import-summary">{importDone}</p>{/if}
 
   {#if plan}
     <div class="import-summary">
@@ -131,24 +131,28 @@
           <li>{plan.summary.newReviews} review log entries</li>
         </ul>
         <div class="row">
-          <button class="btn primary" onclick={confirmImport}>Import</button>
-          <button class="btn" onclick={() => (plan = null)}>Cancel</button>
+          <button class="btn primary small" onclick={confirmImport}>Import</button>
+          <button class="btn ghost small" onclick={() => (plan = null)}>Cancel</button>
         </div>
       {/if}
     </div>
   {/if}
 </section>
 
-<section class="panel">
-  <h2>Storage</h2>
-  <p class="muted small">
-    {#if persisted === true}
-      Your data is stored on this device and protected from automatic cleanup.
-    {:else if persisted === false}
-      Your data is stored on this device, but the browser may clear it if space runs low. Installing the app and
-      exporting backups regularly keeps it safe.
-    {:else}
-      Your data is stored on this device.
-    {/if}
-  </p>
+<p class="section-label">Storage</p>
+<section class="panel settings-group">
+  <div class="setting">
+    <span class="label">
+      On this device
+      <span class="hint">
+        {#if persisted === true}
+          Protected from automatic cleanup.
+        {:else if persisted === false}
+          The browser may clear it if space runs low. Install the app and export backups regularly.
+        {:else}
+          Your cards never leave this device unless you export them.
+        {/if}
+      </span>
+    </span>
+  </div>
 </section>
