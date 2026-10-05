@@ -7,13 +7,11 @@
     "dev": "vite",
     "build": "svelte-check && vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && gh-pages -d dist --nojekyll",
     "test": "vitest run"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "fake-indexeddb": "^6.2.5",
-    "gh-pages": "^6.3.0",
     "svelte": "^5.57.1",
     "svelte-check": "^4.7.6",
     "typescript": "^6.0.3",
