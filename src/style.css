@@ -1,0 +1,83 @@
+:root {
+  --bg: #1a1714;
+  --text: #f3eee8;
+  --muted: #a89f95;
+  --accent: #d97757;
+  --ok: #7fbf7f;
+  --warn: #e0b45c;
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.spark {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 1rem;
+  background: var(--accent);
+  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+  filter: drop-shadow(0 0 12px var(--accent));
+  animation: glide 2.4s ease-in-out infinite;
+}
+
+@keyframes glide {
+  0%,
+  100% {
+    transform: translateX(-24px) rotate(-8deg);
+  }
+  50% {
+    transform: translateX(24px) rotate(8deg);
+  }
+}
+
+h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  letter-spacing: 0.02em;
+}
+
+.tagline {
+  margin: 0;
+  color: var(--muted);
+}
+
+.status {
+  margin-top: 1.5rem;
+  font-weight: 600;
+}
+
+.status[data-state='online'] {
+  color: var(--ok);
+}
+
+.status[data-state='offline'] {
+  color: var(--warn);
+}
+
+.hint {
+  max-width: 28rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
