@@ -5,6 +5,7 @@
   import { href } from '../lib/router.svelte';
   import { earnedSeconds, nextGap, runSeconds } from '../game/reward';
   import RunnerGame from '../components/RunnerGame.svelte';
+  import Mark from '../components/Mark.svelte';
 
   let { deckId }: { deckId: string } = $props();
 
@@ -136,7 +137,7 @@
     </div>
   {:else}
     <div class="done panel">
-      <div class="spark" aria-hidden="true"></div>
+      <Mark size={64} class="spark" />
       <h2>Done for today</h2>
       <p class="muted">
         {reviewedCount === 0

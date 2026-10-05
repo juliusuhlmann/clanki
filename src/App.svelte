@@ -5,6 +5,7 @@
   import Review from './screens/Review.svelte';
   import Settings from './screens/Settings.svelte';
   import RunnerGame from './components/RunnerGame.svelte';
+  import Mark from './components/Mark.svelte';
 
   let online = $state(navigator.onLine);
 </script>
@@ -13,7 +14,7 @@
 
 <header class="topbar">
   <a class="brand" href={href({ name: 'decks' })}>
-    <span class="spark-icon" aria-hidden="true"></span>
+    <Mark size={24} />
     Clanki
   </a>
   <span class="badge" data-state={online ? 'online' : 'offline'}>{online ? 'Online' : 'Offline'}</span>

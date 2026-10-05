@@ -596,7 +596,7 @@ export class Renderer {
     const p = this.p(game.x, HOVER_Y + game.jumpY + bob, 0);
     const tilt = Math.max(-1, Math.min(1, (LANE_X[game.lane] - game.x) * 1.5));
     const flicker = game.invulnerableFor > 0 && Math.floor(game.invulnerableFor * 12) % 2 === 0 ? 0.35 : 1;
-    drawSpark(ctx, p.x, p.y, 0.3 * p.s, { t: this.t, tilt, air, alpha: flicker });
+    drawSpark(ctx, p.x, p.y, 0.34 * p.s, { t: this.t, tilt, air, alpha: flicker });
   }
 
   // ---------- Particles ----------
