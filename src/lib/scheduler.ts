@@ -1,5 +1,17 @@
-import { createEmptyCard, fsrs, Rating, State, type Card as FsrsCard, type Grade } from 'ts-fsrs';
-import { db as defaultDb, getNewPerDay, type Card, type ClankiDb, type FsrsState } from './db';
+import { createEmptyCard, Rating, State, type Grade } from 'ts-fsrs';
+import {
+  activeExam,
+  daysUntil,
+  DEFAULT_DAILY_MINUTES,
+  examMoment,
+  newCardsNeeded,
+  normalDue,
+  planExamDue,
+  recallIfStoppedNow,
+  type DayLoad,
+} from './exam';
+import { fromFsrsCard, scheduler, startOfStudyDay, toFsrsCard } from './fsrs';
+import { db as defaultDb, getNewPerDay, getSetting, type Card, type ClankiDb, type Deck, type FsrsState } from './db';
 
 export { Rating, State };
 export type { Grade };
@@ -9,44 +21,7 @@ export const GRADES: Grade[] = [Rating.Again, Rating.Hard, Rating.Good, Rating.E
 /** Cards due again within this window come back in the same session. */
 export const LEARN_AHEAD_MS = 20 * 60 * 1000;
 
-/** A new study day starts at 4:00 local time, so late-night sessions count for the previous day. */
-const DAY_ROLLOVER_HOUR = 4;
-
-const scheduler = fsrs({ request_retention: 0.9, enable_fuzz: true });
-
-export function startOfStudyDay(now: number): number {
-  const d = new Date(now);
-  if (d.getHours() < DAY_ROLLOVER_HOUR) d.setDate(d.getDate() - 1);
-  d.setHours(DAY_ROLLOVER_HOUR, 0, 0, 0);
-  return d.getTime();
-}
-
-function toFsrsCard(card: Card): FsrsCard {
-  const { last_review, ...rest } = card.fsrs;
-  return {
-    ...rest,
-    state: rest.state as State,
-    due: new Date(card.due),
-    ...(last_review !== null ? { last_review: new Date(last_review) } : {}),
-  };
-}
-
-function fromFsrsCard(c: FsrsCard): { due: number; fsrs: FsrsState } {
-  return {
-    due: c.due.getTime(),
-    fsrs: {
-      stability: c.stability,
-      difficulty: c.difficulty,
-      elapsed_days: c.elapsed_days,
-      scheduled_days: c.scheduled_days,
-      learning_steps: c.learning_steps,
-      reps: c.reps,
-      lapses: c.lapses,
-      state: c.state,
-      last_review: c.last_review ? c.last_review.getTime() : null,
-    },
-  };
-}
+export { startOfStudyDay };
 
 /** Scheduling fields for a brand-new card. */
 export function newCardSchedule(now: number): { due: number; fsrs: FsrsState } {
@@ -89,7 +64,14 @@ export async function rate(
   database: ClankiDb = defaultDb,
 ): Promise<Card> {
   const { card: next, log } = scheduler.next(toFsrsCard(card), new Date(now), grade);
-  const updated: Card = { ...card, ...fromFsrsCard(next), updatedAt: now };
+  const scheduled = fromFsrsCard(next);
+  // In a deck with an upcoming exam, reviewed cards come back on the exam plan instead (exam.ts).
+  const exam = activeExam(await database.decks.get(card.deckId), now);
+  if (exam !== null) {
+    const planned = planExamDue(scheduled, exam, now, 1, await examLoad(now, database));
+    if (planned !== null) scheduled.due = planned;
+  }
+  const updated: Card = { ...card, ...scheduled, updatedAt: now };
   await database.transaction('rw', database.cards, database.reviews, async () => {
     await database.cards.put(updated);
     await database.reviews.add({
@@ -116,11 +98,70 @@ export async function newIntroducedToday(deckId: string, now: number, database: 
   return new Set(reviews.map((r) => r.cardId)).size;
 }
 
+/**
+ * New cards per day for a deck: the daily limit, or more if an upcoming exam needs a faster pace
+ * to have every card learned in time (exam.ts).
+ */
+export async function newPerDayFor(deckId: string, cards: Card[], now: number, database: ClankiDb = defaultDb): Promise<number> {
+  const normal = await getNewPerDay(database);
+  const exam = activeExam(await database.decks.get(deckId), now);
+  if (exam === null) return normal;
+  const unlearned = cards.filter((c) => c.fsrs.state === State.New).length;
+  return Math.max(normal, newCardsNeeded(unlearned + (await newIntroducedToday(deckId, now, database)), exam, now));
+}
+
+async function remainingNewToday(deckId: string, cards: Card[], now: number, database: ClankiDb): Promise<number> {
+  return Math.max(0, (await newPerDayFor(deckId, cards, now, database)) - (await newIntroducedToday(deckId, now, database)));
+}
+
+/** Reviewed cards of decks with an upcoming exam, counted by the day they're due (days from today). */
+export async function examLoad(now: number, database: ClankiDb = defaultDb): Promise<DayLoad> {
+  const examDecks = (await database.decks.toArray()).filter((d) => activeExam(d, now) !== null).map((d) => d.id);
+  const load: DayLoad = new Map();
+  if (!examDecks.length) return load;
+  const cards = await database.cards.where('deckId').anyOf(examDecks).toArray();
+  for (const c of cards) {
+    if (c.fsrs.state !== State.Review) continue;
+    const day = daysUntil(now, c.due);
+    load.set(day, (load.get(day) ?? 0) + 1);
+  }
+  return load;
+}
+
+/**
+ * Sets or clears a deck's exam date and re-plans its reviewed cards: on the exam plan while the
+ * exam is ahead, back to normal long-term intervals otherwise.
+ */
+export async function setExamDate(deckId: string, examDate: string | null, now: number, database: ClankiDb = defaultDb): Promise<void> {
+  await database.transaction('rw', database.decks, database.cards, async () => {
+    const deck = await database.decks.get(deckId);
+    if (!deck) return;
+    const { examDate: _old, ...rest } = deck;
+    const next: Deck = examDate ? { ...rest, examDate } : rest;
+    await database.decks.put({ ...next, updatedAt: now });
+
+    const exam = activeExam(next, now);
+    const load = exam === null ? undefined : await examLoad(now, database);
+    const cards = await database.cards.where('deckId').equals(deckId).toArray();
+    for (const card of cards) {
+      if (card.fsrs.state !== State.Review) continue;
+      const due = (exam === null ? null : planExamDue(card, exam, now, 0, load)) ?? normalDue(card);
+      if (due === card.due) continue;
+      if (load) {
+        const from = daysUntil(now, card.due);
+        load.set(from, (load.get(from) ?? 1) - 1);
+        load.set(daysUntil(now, due), (load.get(daysUntil(now, due)) ?? 0) + 1);
+      }
+      await database.cards.update(card.id, { due, updatedAt: now });
+    }
+  });
+}
+
 /** Today's queue for a deck: due cards (oldest first), then new cards up to the daily limit. */
 export async function buildQueue(deckId: string, now: number, database: ClankiDb = defaultDb): Promise<Card[]> {
   const cards = await database.cards.where('deckId').equals(deckId).toArray();
   const due = cards.filter((c) => c.fsrs.state !== State.New && c.due <= now).sort((a, b) => a.due - b.due);
-  const remainingNew = Math.max(0, (await getNewPerDay(database)) - (await newIntroducedToday(deckId, now, database)));
+  const remainingNew = await remainingNewToday(deckId, cards, now, database);
   const fresh = cards
     .filter((c) => c.fsrs.state === State.New)
     .sort((a, b) => a.createdAt - b.createdAt)
@@ -136,7 +177,7 @@ export async function deckCounts(
   const cards = await database.cards.where('deckId').equals(deckId).toArray();
   const due = cards.filter((c) => c.fsrs.state !== State.New && c.due <= now).length;
   const totalNew = cards.filter((c) => c.fsrs.state === State.New).length;
-  const remainingNew = Math.max(0, (await getNewPerDay(database)) - (await newIntroducedToday(deckId, now, database)));
+  const remainingNew = await remainingNewToday(deckId, cards, now, database);
   return { due, new: Math.min(totalNew, remainingNew), total: cards.length };
 }
 
@@ -221,4 +262,61 @@ export async function buildLibraryQueue(
     [picked[i], picked[j]] = [picked[j], picked[i]];
   }
   return picked;
+}
+
+export interface ExamStatus {
+  examDate: string;
+  /** Days until the exam (0 = today); negative once it's over. */
+  daysLeft: number;
+  /** Average predicted recall on exam day if you stopped studying now (new cards count as 0). */
+  ifStoppedNow: number;
+  /** New cards per day this deck needs to be fully learned in time, and the normal limit. */
+  newNeeded: number;
+  newNormal: number;
+  /** Busiest of the next two weeks for all exam decks together, in minutes, and the daily limit. */
+  busiestMinutes: number;
+  dailyMinutes: number;
+}
+
+/** Typical seconds per answer from your recent reviews (10 s until there are enough). */
+export async function secondsPerAnswer(database: ClankiDb = defaultDb): Promise<number> {
+  const recent = (await database.reviews.orderBy('reviewedAt').reverse().limit(300).toArray()).map((r) => r.durationMs).sort((a, b) => a - b);
+  return recent.length < 20 ? 10 : Math.max(2, recent[Math.floor(recent.length / 2)] / 1000);
+}
+
+export async function examStatus(deckId: string, now: number, database: ClankiDb = defaultDb): Promise<ExamStatus | null> {
+  const deck = await database.decks.get(deckId);
+  if (!deck?.examDate) return null;
+  const moment = examMoment(deck.examDate);
+  const cards = await database.cards.where('deckId').equals(deckId).toArray();
+  const newNormal = await getNewPerDay(database);
+  const dailyMinutes = await getSetting<number>('examDailyMinutes', DEFAULT_DAILY_MINUTES, database);
+  const status: ExamStatus = {
+    examDate: deck.examDate,
+    daysLeft: daysUntil(now, moment),
+    ifStoppedNow: recallIfStoppedNow(cards, moment),
+    newNeeded: 0,
+    newNormal,
+    busiestMinutes: 0,
+    dailyMinutes,
+  };
+  if (activeExam(deck, now) === null) return status;
+
+  const unlearned = cards.filter((c) => c.fsrs.state === State.New).length;
+  status.newNeeded = newCardsNeeded(unlearned + (await newIntroducedToday(deckId, now, database)), moment, now);
+  // Workload: planned reviews per day, plus about two answers for each new card of every exam deck.
+  const load = await examLoad(now, database);
+  let newAnswersPerDay = 0;
+  for (const d of await database.decks.toArray()) {
+    const exam = activeExam(d, now);
+    if (exam === null) continue;
+    const deckCards = d.id === deckId ? cards : await database.cards.where('deckId').equals(d.id).toArray();
+    const fresh = deckCards.filter((c) => c.fsrs.state === State.New).length;
+    newAnswersPerDay += 2 * Math.min(fresh, Math.max(newNormal, newCardsNeeded(fresh, exam, now)));
+  }
+  const seconds = await secondsPerAnswer(database);
+  let busiest = 0;
+  for (let day = 0; day < 14; day++) busiest = Math.max(busiest, (load.get(day) ?? 0) + newAnswersPerDay);
+  status.busiestMinutes = Math.round((busiest * seconds) / 60);
+  return status;
 }

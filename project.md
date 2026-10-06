@@ -54,7 +54,19 @@ Library run flow (`src/screens/LibraryRun.svelte`, `#/library`, started from the
 
 ## Scheduling and exam mode
 
-_TODO_
+Normal scheduling: FSRS (ts-fsrs, `src/lib/fsrs.ts` + `scheduler.ts`) aiming for 90% recall when a card comes due.
+
+**Exam mode** (`src/lib/exam.ts`): a deck can get an exam date (date only; recall is predicted for 8:00 that day). While the exam is ahead, FSRS still models memory (stability, recall over time) but the due dates follow these rules:
+- **Target 95%** recall for every card on exam day
+- **Floor**: a card may drop to 80% before a review, rising linearly to 90% over the 30 days before the final window: fewer, more effective reviews early on
+- **Already safe**: a card predicted at ≥95% on exam day without another review isn't shown again before the exam
+- **Final pass** (8 to 2 days before the exam): each card that wouldn't make 95% on its own gets its last review as late as safe, on a day where a "Good" answer brings it to ≥95%, choosing the least busy day so the window's work is spread out
+- **Day before the exam** stays free (time for old exams and exercise sheets), except for cards answered wrongly late on
+- **New cards**: the normal daily limit, raised only if needed so everything is learned 10 days before the exam (`newPerDayFor`); the deck shows a warning when that happens
+- **Daily time** for all exam decks together (Settings, default 40 min, using your median answer time from the review log): a warning on the deck when the next two weeks' busiest day needs more; nothing is skipped
+- Setting, changing or removing the date re-plans the deck's reviewed cards (`setExamDate`); after the exam the deck is back to normal scheduling
+- The deck shows "If you stopped now: X% on exam day" (average predicted recall, new cards as 0)
+- `exam.test.ts` simulates a 45-day semester answering everything due with Good: every card ends ≥95% (98% in practice) with the same number of answers plain FSRS needs for a ~91% minimum, everything is learned 10 days ahead, and the day before the exam is free
 
 ## Design
 
@@ -93,22 +105,22 @@ _TODO_
 
 ## Roadmap
 
-1. **Project setup and offline shell**
+1. **Project setup and offline shell** ✅
    Create a Vite + TypeScript project, make it an installable PWA (manifest + service worker), and deploy it free.
    _Goal: install it on the phone and it opens with no internet._
-2. **Cards and storage**
+2. **Cards and storage** ✅
    Add cards (front/back) and decks, stored in IndexedDB via Dexie, plus JSON export/import for backups.
    _Goal: create cards on the laptop, back them up, load them on the phone._
-3. **Review loop with FSRS**
+3. **Review loop with FSRS** ✅
    Show a card, reveal the answer, rate it Again/Hard/Good/Easy, and schedule it with ts-fsrs. Log every review.
    _Goal: a working spaced-repetition app._
-4. **The runner game**
+4. **The runner game** ✅ (became the library run: ~12 cards from all decks with two 30s runs, see "The game")
    Build a canvas game with a little spark in three lanes, obstacles, and swipe/arrow-key controls. Insert it every N cards, with correct cards adding game seconds.
    _Goal: the core study-and-play loop._
-5. **Exam mode**
+5. **Exam mode** ✅ (see "Scheduling and exam mode")
    Add exam dates per deck, the exam-day recall target, a retention floor, windowed reviews, and a daily cap.
    _Goal: balanced reviews across the semester that peak on exam day._
-6. **Polish and extras**
+6. **Polish and extras** (sync ✅ via Cloudflare, see "Data and sync")
    Add the leech boss, power-ups, deck worlds, stats (retention, streaks), and optional sync (OneDrive backup or Supabase).
 
 Each step leaves something usable; steps 1–3 alone give a working flashcard app.

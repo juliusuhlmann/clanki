@@ -1087,3 +1087,54 @@ input[type='search'] {
   margin: 0 0 0.75rem;
   padding-left: 1.25rem;
 }
+
+/* ---------- Exam mode (deck screen) ---------- */
+
+.exam {
+  margin-bottom: 1rem;
+}
+
+.exam-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.exam-head > :first-child {
+  flex: 1;
+  margin: 0;
+}
+
+.exam-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.exam-facts {
+  margin: 0.6rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.exam-facts li + li {
+  margin-top: 0.25rem;
+}
+
+.exam-facts strong {
+  color: var(--text);
+}
+
+.exam-facts .warn {
+  color: var(--hard);
+}
+
+.exam-edit {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.exam-label {
+  flex: 1;
+  min-width: 10rem;
+}

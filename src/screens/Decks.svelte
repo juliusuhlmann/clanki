@@ -2,6 +2,7 @@
   import { liveQuery } from 'dexie';
   import { db, topLibraryRuns } from '../lib/db';
   import { deckCounts, libraryRunSize } from '../lib/scheduler';
+  import { activeExam } from '../lib/exam';
   import { createDeck, renameDeck, deleteDeck } from '../lib/store';
   import { href } from '../lib/router.svelte';
   import FlyingFirefly from '../components/FlyingFirefly.svelte';
@@ -45,6 +46,11 @@
     e.preventDefault();
     if (editingId && editName.trim()) await renameDeck(editingId, editName);
     editingId = null;
+  }
+
+  function examLabel(iso: string): string {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   }
 
   async function confirmDelete(id: string) {
@@ -97,6 +103,7 @@
               {#if counts.due}<span class="pill due">{counts.due} due</span>{/if}
               {#if counts.new}<span class="pill new">{counts.new} new</span>{/if}
               <span>{counts.total} card{counts.total === 1 ? '' : 's'}</span>
+              {#if activeExam(deck, Date.now()) !== null}<span>· exam {examLabel(deck.examDate!)}</span>{/if}
             </span>
           </a>
           {#if counts.due + counts.new > 0}

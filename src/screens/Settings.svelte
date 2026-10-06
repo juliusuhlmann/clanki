@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getNewPerDay, setNewPerDay } from '../lib/db';
+  import { getNewPerDay, getSetting, setNewPerDay, setSetting } from '../lib/db';
+  import { DEFAULT_DAILY_MINUTES } from '../lib/exam';
   import { RUN_SECONDS } from '../game/reward';
   import { exportData, backupFileName, parseBackup, planImport, applyImport, type ImportPlan } from '../lib/backup';
   import { href } from '../lib/router.svelte';
@@ -22,6 +23,7 @@
   onMount(() => {
     void (async () => {
       newPerDay = await getNewPerDay();
+      dailyMinutes = await getSetting<number>('examDailyMinutes', DEFAULT_DAILY_MINUTES);
       persisted = (await navigator.storage?.persisted?.()) ?? null;
       await refreshStatus();
     })();
@@ -59,6 +61,14 @@
   async function doUnlink() {
     await unlink();
     await refreshStatus();
+  }
+
+  let dailyMinutes = $state<number | null>(null);
+
+  async function saveDailyMinutes() {
+    if (dailyMinutes === null || !Number.isFinite(dailyMinutes)) return;
+    dailyMinutes = Math.max(5, Math.min(600, Math.round(dailyMinutes)));
+    await setSetting('examDailyMinutes', dailyMinutes);
   }
 
   async function saveNewPerDay() {
@@ -123,6 +133,13 @@
       <span class="hint">Per deck. {#if saved}<strong>Saved.</strong>{/if}</span>
     </span>
     <input type="number" min="0" max="999" inputmode="numeric" bind:value={newPerDay} onchange={saveNewPerDay} />
+  </label>
+  <label class="setting">
+    <span class="label">
+      Daily time for exams
+      <span class="hint">Minutes a day for all decks with an exam date; you're warned when the plan needs more.</span>
+    </span>
+    <input type="number" min="5" max="600" inputmode="numeric" bind:value={dailyMinutes} onchange={saveDailyMinutes} />
   </label>
 </section>
 

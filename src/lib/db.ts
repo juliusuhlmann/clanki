@@ -20,6 +20,8 @@ export interface Deck {
   name: string;
   createdAt: number;
   updatedAt: number;
+  /** Exam day as `YYYY-MM-DD` (local); while it's ahead, the deck is scheduled for it (see exam.ts). */
+  examDate?: string;
 }
 
 export interface Card {

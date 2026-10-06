@@ -1,7 +1,7 @@
 <script lang="ts">
   import { liveQuery } from 'dexie';
   import { db, type Card } from '../lib/db';
-  import { deckCounts, formatInterval, retrievability, State } from '../lib/scheduler';
+  import { deckCounts, examStatus, formatInterval, retrievability, setExamDate, State } from '../lib/scheduler';
   import { createCard, updateCard, deleteCard } from '../lib/store';
   import { href } from '../lib/router.svelte';
   import { renderCardText, searchableText } from '../lib/cardText';
@@ -12,6 +12,37 @@
   const deck = liveQuery(() => db.decks.get(deckId));
   const cards = liveQuery(() => db.cards.where('deckId').equals(deckId).reverse().sortBy('createdAt'));
   const counts = liveQuery(() => deckCounts(deckId, Date.now()));
+  const exam = liveQuery(() => examStatus(deckId, Date.now()));
+
+  let editingExam = $state(false);
+  let examInput = $state('');
+
+  /** Today's date as YYYY-MM-DD, local. */
+  function todayIso(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function formatExamDate(iso: string): string {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+
+  function startEditExam(current: string) {
+    examInput = current;
+    editingExam = true;
+  }
+
+  async function saveExam(e: SubmitEvent) {
+    e.preventDefault();
+    if (!examInput) return;
+    await setExamDate(deckId, examInput, Date.now());
+    editingExam = false;
+  }
+
+  async function clearExam() {
+    await setExamDate(deckId, null, Date.now());
+  }
 
   let front = $state('');
   let back = $state('');
@@ -88,6 +119,58 @@
       <a class="btn primary" href={href({ name: 'review', deckId })}>Study</a>
     {/if}
   </div>
+
+  <!-- Exam mode: scheduled to reach 95% on the exam day (see lib/exam.ts). -->
+  <section class="panel exam">
+    {#if editingExam}
+      <form class="row exam-edit" onsubmit={saveExam}>
+        <label class="exam-label">
+          Exam date
+          <input type="date" bind:value={examInput} min={todayIso()} required />
+        </label>
+        <button class="btn primary small" type="submit" disabled={!examInput}>Save</button>
+        <button class="btn ghost small" type="button" onclick={() => (editingExam = false)}>Cancel</button>
+      </form>
+    {:else if $exam}
+      <div class="exam-head">
+        <div>
+          <p class="exam-title">
+            Exam {formatExamDate($exam.examDate)}
+            <span class="muted">
+              · {$exam.daysLeft > 1 ? `in ${$exam.daysLeft} days` : $exam.daysLeft === 1 ? 'tomorrow' : $exam.daysLeft === 0 ? 'today' : 'over'}
+            </span>
+          </p>
+        </div>
+        <button class="btn ghost small" onclick={() => startEditExam($exam.examDate)}>Change</button>
+        <button class="btn ghost small" onclick={clearExam}>Remove</button>
+      </div>
+      {#if $exam.daysLeft >= 0}
+        <ul class="exam-facts">
+          <li>
+            If you stopped now: <strong>{Math.round($exam.ifStoppedNow * 100)}%</strong> on exam day. The plan aims for 95%.
+          </li>
+          {#if $exam.newNeeded > $exam.newNormal}
+            <li class="warn">
+              {$exam.newNeeded} new cards a day needed to learn everything 10 days before the exam (instead of {$exam.newNormal}).
+            </li>
+          {/if}
+          {#if $exam.busiestMinutes > $exam.dailyMinutes}
+            <li class="warn">
+              Busiest day of the next two weeks: about {$exam.busiestMinutes} min across your exams, more than your
+              {$exam.dailyMinutes} min a day.
+            </li>
+          {/if}
+        </ul>
+      {:else}
+        <p class="muted small">The exam is over, so this deck is back to normal scheduling.</p>
+      {/if}
+    {:else}
+      <div class="exam-head">
+        <p class="muted small">Add an exam date to plan this deck for 95% on exam day.</p>
+        <button class="btn small" onclick={() => startEditExam('')}>Add exam date</button>
+      </div>
+    {/if}
+  </section>
 
   <form class="panel card-form" onsubmit={addCard}>
     <h2>New card</h2>
