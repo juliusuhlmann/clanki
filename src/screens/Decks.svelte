@@ -79,7 +79,6 @@
 
 {#if $decks && $decks.length === 0}
   <div class="empty panel">
-    <Firefly size={40} />
     <p>No decks yet.</p>
   </div>
 {:else if $decks}

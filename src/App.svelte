@@ -8,16 +8,20 @@
   import Firefly from './components/Firefly.svelte';
 
   let online = $state(navigator.onLine);
+  const home = $derived(router.route.name === 'decks');
 </script>
 
 <svelte:window ononline={() => (online = true)} onoffline={() => (online = false)} />
 
-<header class="topbar">
+<!-- On the home screen the greeting is the heading, so the bar only holds settings. -->
+<header class="topbar" class:home>
   <div class="topbar-inner">
-    <a class="brand" href={href({ name: 'decks' })}>
-      <Firefly size={28} />
-      Clanki
-    </a>
+    {#if !home}
+      <a class="brand" href={href({ name: 'decks' })}>
+        <Firefly size={28} />
+        Clanki
+      </a>
+    {/if}
     {#if !online}<span class="offline-pill">Offline</span>{/if}
     <a class="icon-btn" href={href({ name: 'settings' })} aria-label="Settings">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -28,7 +32,7 @@
   </div>
 </header>
 
-<main class="content">
+<main class="content" class:home>
   {#if router.route.name === 'decks'}
     <Decks />
   {:else if router.route.name === 'deck'}

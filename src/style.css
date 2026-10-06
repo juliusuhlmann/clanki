@@ -215,6 +215,30 @@ p {
   margin-bottom: 1.5rem;
 }
 
+/* Home: no brand bar. Settings floats top right, level with the greeting. */
+.topbar.home {
+  position: absolute;
+  inset: 0 0 auto;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 0;
+}
+
+.topbar.home .topbar-inner {
+  justify-content: flex-end;
+  padding-top: calc(1.1rem + env(safe-area-inset-top));
+}
+
+.content.home {
+  padding-top: calc(1.25rem + env(safe-area-inset-top));
+}
+
+/* Keep a long greeting clear of the settings button. */
+.content.home .page-head h1 {
+  padding-right: 3rem;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;
