@@ -215,7 +215,7 @@ p {
   margin-bottom: 1.5rem;
 }
 
-/* Home: no brand bar. Settings floats top right, level with the greeting. */
+/* Home: no brand bar, just settings in the top-right corner. */
 .topbar.home {
   position: absolute;
   inset: 0 0 auto;
@@ -227,17 +227,11 @@ p {
 
 .topbar.home .topbar-inner {
   justify-content: flex-end;
-  padding-top: calc(3.35rem + env(safe-area-inset-top));
 }
 
 /* Give the greeting some breathing room from the top of the screen. */
 .content.home {
   padding-top: calc(3.5rem + env(safe-area-inset-top));
-}
-
-/* Keep a long greeting clear of the settings button. */
-.content.home .page-head h1 {
-  padding-right: 3rem;
 }
 
 .row {
