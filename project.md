@@ -19,7 +19,7 @@ Done (steps 2–3):
 ## The game
 
 Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
-- A little firefly (`src/game/firefly.ts`) flies down a dim three-lane library corridor (pseudo-3D, plain canvas 2D, no image assets). Seen from behind: buzzing wings, dark wing covers with a cream rim, an orange shield, antennae, and a glowing lantern facing the camera
+- A little firefly (`src/game/firefly.ts`) flies down a dim three-lane library corridor (pseudo-3D, plain canvas 2D, no image assets). Seen from behind: a round brown body whose belly is the glowing lantern, a round head, small buzzing wings and antennae with glowing tips. Every 5–9s and when it grabs a letter it glances back over its shoulder (big shiny eyes, rosy cheeks); after a hit it squints (> <)
 - Its lantern lights the scene: a warm pool on the floor ahead, a glow on the nearby bookshelf, obstacles tinted as they come close, and darkness closing in away from it. The light breathes slowly and flares on a letter boost; it leaves a trail of twinkling motes
 - Controls: swipe left/right (or ←/→, A/D) to change lane; swipe up, tap, ↑/W or Space to jump
 - Obstacles: book piles (jump or dodge), book carts (dodge), and ladders leaning across the corridor against a bookshelf: low over the middle lane (jump), high over the wall-side lane (glide under; jumping there hits it), absent over the far lane, where a book cart sometimes stands. Every row stays passable and rows are spaced so you can always react

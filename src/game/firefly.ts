@@ -1,5 +1,5 @@
-// The player character: a little round firefly seen from behind, as the camera follows it.
-// Its glowing lantern (the tip of the abdomen) faces the camera and lights the corridor.
+// The player character: a small round firefly seen from behind, as the camera follows it.
+// Its glowing belly faces the camera and lights the corridor. Now and then it glances back.
 
 export interface FireflyPose {
   /** Seconds, drives idle animation. */
@@ -12,27 +12,31 @@ export interface FireflyPose {
   alpha: number;
   /** Lantern brightness, ~1 normally, higher while boosted. */
   glow: number;
+  /** 0..1, how far it has turned its head to look back at the camera. */
+  look: number;
+  /** Which shoulder it looks over: -1 left, 1 right. */
+  lookSide: -1 | 1;
+  /** Squeezed eyes after a hit. */
+  hurt: boolean;
 }
 
 /** The lantern's light, for anything the firefly illuminates. */
 export const FIREFLY_LIGHT: [number, number, number] = [228, 240, 130];
 export const FIREFLY_COLOR = '#e6f07a';
 
-// Shapes in unit coordinates (radius 1, y down), built once.
-const ELYTRON = (() => {
-  // The left wing cover; the right one is mirrored. Hinged at the top near the midline.
+const BODY_R = 0.6;
+const HEAD_Y = -0.66;
+const HEAD_R = 0.37;
+
+const BODY = (() => {
   const p = new Path2D();
-  p.moveTo(-0.05, -0.44);
-  p.bezierCurveTo(-0.36, -0.49, -0.61, -0.32, -0.63, -0.04);
-  p.bezierCurveTo(-0.64, 0.16, -0.46, 0.31, -0.25, 0.27);
-  p.bezierCurveTo(-0.11, 0.18, -0.04, -0.1, -0.05, -0.44);
-  p.closePath();
+  p.arc(0, 0, BODY_R, 0, Math.PI * 2);
   return p;
 })();
 
-const LANTERN = (() => {
+const HEAD = (() => {
   const p = new Path2D();
-  p.ellipse(0, 0.36, 0.55, 0.5, 0, 0, Math.PI * 2);
+  p.arc(0, HEAD_Y, HEAD_R, 0, Math.PI * 2);
   return p;
 })();
 
@@ -44,91 +48,59 @@ export function drawFirefly(ctx: CanvasRenderingContext2D, x: number, y: number,
   ctx.translate(x, y);
   ctx.scale(r, r);
 
-  // Halo around the lantern, drawn upright before the body banks.
+  // Soft halo around the belly.
   ctx.globalCompositeOperation = 'lighter';
-  const halo = ctx.createRadialGradient(0, 0.4, 0.1, 0, 0.4, 2.6);
-  halo.addColorStop(0, `rgba(${lr},${lg},${lb},${0.42 * glow * alpha})`);
-  halo.addColorStop(0.3, `rgba(${lr},${lg},${lb},${0.13 * glow * alpha})`);
+  const halo = ctx.createRadialGradient(0, 0.25, 0.1, 0, 0.25, 2.4);
+  halo.addColorStop(0, `rgba(${lr},${lg},${lb},${0.38 * glow * alpha})`);
+  halo.addColorStop(0.3, `rgba(${lr},${lg},${lb},${0.11 * glow * alpha})`);
   halo.addColorStop(1, `rgba(${lr},${lg},${lb},0)`);
   ctx.fillStyle = halo;
   ctx.beginPath();
-  ctx.arc(0, 0.4, 2.6, 0, Math.PI * 2);
+  ctx.arc(0, 0.25, 2.4, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalCompositeOperation = 'source-over';
 
   ctx.globalAlpha = alpha;
-  ctx.rotate(tilt * 0.32 + Math.sin(t * 2.1) * 0.04);
-  // Rising in a jump tips the body slightly back, so more of the lantern shows.
-  ctx.scale(1, 1 - air * 0.06);
-  const lean = tilt * 0.05;
+  ctx.rotate(tilt * 0.3 + Math.sin(t * 2.1) * 0.05);
+  // A gentle breathing squash keeps it feeling alive.
+  const breathe = Math.sin(t * 2.6) * 0.025;
+  ctx.scale(1 + breathe, 1 - breathe);
 
   drawWings(ctx, t, air);
-  drawLegs(ctx, t);
-  drawLantern(ctx, glow);
-  drawHead(ctx, t, tilt, lean);
+  drawBody(ctx, glow);
+  drawHead(ctx, pose);
 
-  // Wing covers, spread a little in flight, with a cream rim like a real firefly.
-  const spread = 0.13 + Math.sin(t * 9) * 0.015 + air * 0.05;
-  for (const side of [-1, 1]) {
-    ctx.save();
-    ctx.translate(side * 0.05, -0.44);
-    ctx.rotate(-side * spread);
-    ctx.translate(-side * 0.05, 0.44);
-    ctx.scale(-side, 1);
-    const shell = ctx.createLinearGradient(-0.6, -0.4, -0.1, 0.25);
-    shell.addColorStop(0, '#4a3524');
-    shell.addColorStop(1, '#1f1610');
-    ctx.fillStyle = shell;
-    ctx.fill(ELYTRON);
-    ctx.save();
-    ctx.clip(ELYTRON);
-    // Lantern light catching the lower edge.
-    const under = ctx.createRadialGradient(0, 0.42, 0, 0, 0.42, 0.7);
-    under.addColorStop(0, `rgba(${lr},${lg},${lb},${0.45 * Math.min(1.3, glow)})`);
-    under.addColorStop(1, `rgba(${lr},${lg},${lb},0)`);
-    ctx.fillStyle = under;
-    ctx.fillRect(-0.7, -0.5, 0.7, 0.9);
-    // Glossy highlight.
-    ctx.fillStyle = 'rgba(255,232,196,0.16)';
-    ctx.beginPath();
-    ctx.ellipse(-0.4, -0.22, 0.09, 0.2, 0.35, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    ctx.strokeStyle = '#c99d5a';
-    ctx.lineWidth = 0.035;
-    ctx.stroke(ELYTRON);
-    ctx.restore();
-  }
-
-  // Bloom over the lantern so it reads as a light, not just a colour.
+  // Bloom over the belly so it reads as a light, not just a colour.
   ctx.globalCompositeOperation = 'lighter';
-  const bloom = ctx.createRadialGradient(0, 0.46, 0, 0, 0.46, 0.75);
-  bloom.addColorStop(0, `rgba(255,255,215,${0.4 * glow * alpha})`);
-  bloom.addColorStop(1, 'rgba(255,255,215,0)');
+  const bloom = ctx.createRadialGradient(0, 0.3, 0, 0, 0.3, 0.6);
+  bloom.addColorStop(0, `rgba(255,255,220,${0.32 * glow * alpha})`);
+  bloom.addColorStop(1, 'rgba(255,255,220,0)');
   ctx.fillStyle = bloom;
   ctx.beginPath();
-  ctx.arc(0, 0.46, 0.75, 0, Math.PI * 2);
+  ctx.arc(0, 0.3, 0.6, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
 }
 
-/** Two buzzing membranous wings, drawn as a few ghosted positions for motion blur. */
+/** Two small rounded wings, buzzing; a couple of ghosted positions give a soft motion blur. */
 function drawWings(ctx: CanvasRenderingContext2D, t: number, air: number): void {
-  const rate = 42 + air * 18;
+  const rate = 34 + air * 14;
   for (const side of [-1, 1]) {
-    for (let k = 0; k < 3; k++) {
-      const beat = 0.5 + 0.5 * Math.sin(t * rate + k * 0.9);
-      const angle = -(0.25 + 0.6 * beat);
+    for (let k = 0; k < 2; k++) {
+      const beat = 0.5 + 0.5 * Math.sin(t * rate + k * 1.3);
       ctx.save();
-      ctx.translate(side * 0.2, -0.3);
+      ctx.translate(side * 0.22, -0.36);
       ctx.scale(side, 1);
-      ctx.rotate(angle);
-      ctx.fillStyle = 'rgba(232,238,255,0.16)';
-      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-      ctx.lineWidth = 0.02;
+      ctx.rotate(-(0.35 + 0.7 * beat));
+      ctx.fillStyle = 'rgba(236,244,255,0.32)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 0.025;
+      // A teardrop: narrow at the shoulder, round at the tip.
       ctx.beginPath();
-      ctx.ellipse(0.55, 0, 0.58, 0.19, 0, 0, Math.PI * 2);
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(0.22, -0.28, 0.8, -0.3, 0.84, 0);
+      ctx.bezierCurveTo(0.8, 0.22, 0.22, 0.2, 0, 0);
       ctx.fill();
       ctx.stroke();
       ctx.restore();
@@ -136,96 +108,158 @@ function drawWings(ctx: CanvasRenderingContext2D, t: number, air: number): void 
   }
 }
 
-/** Tiny legs tucked under the body, just peeking out at the sides. */
-function drawLegs(ctx: CanvasRenderingContext2D, t: number): void {
-  ctx.strokeStyle = '#2a1d14';
+/** One round body: soft brown on top, the glowing lantern below. */
+function drawBody(ctx: CanvasRenderingContext2D, glow: number): void {
+  const fur = ctx.createRadialGradient(-0.18, -0.3, 0.05, 0, 0, BODY_R);
+  fur.addColorStop(0, '#7a5440');
+  fur.addColorStop(1, '#3e2a20');
+  ctx.fillStyle = fur;
+  ctx.fill(BODY);
+
+  ctx.save();
+  ctx.clip(BODY);
+  // The lantern: a dome of light filling the lower body.
+  const g = Math.min(1.25, glow);
+  const light = ctx.createRadialGradient(0, 0.42, 0, 0, 0.3, 0.62);
+  light.addColorStop(0, '#fffef0');
+  light.addColorStop(0.45, g > 1.05 ? '#fffbd0' : '#fbf6a8');
+  light.addColorStop(0.85, '#e2ef7e');
+  light.addColorStop(1, '#c4dc5c');
+  ctx.fillStyle = light;
+  ctx.beginPath();
+  ctx.ellipse(0, 0.32, 0.7, 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // One soft segment line, curving like a smile.
+  ctx.strokeStyle = 'rgba(150,170,60,0.28)';
+  ctx.lineWidth = 0.035;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-0.42, 0.34);
+  ctx.quadraticCurveTo(0, 0.52, 0.42, 0.34);
+  ctx.stroke();
+  // Warm light bleeding up onto the brown.
+  const bleed = ctx.createLinearGradient(0, -0.15, 0, 0.1);
+  bleed.addColorStop(0, 'rgba(240,230,140,0)');
+  bleed.addColorStop(1, 'rgba(240,230,140,0.25)');
+  ctx.fillStyle = bleed;
+  ctx.fillRect(-0.7, -0.4, 1.4, 0.55);
+  ctx.restore();
+
+  // Glossy highlight on the back.
+  ctx.fillStyle = 'rgba(255,236,210,0.16)';
+  ctx.beginPath();
+  ctx.ellipse(-0.24, -0.3, 0.15, 0.08, -0.6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Round head with springy antennae; when it looks back, its face turns into view. */
+function drawHead(ctx: CanvasRenderingContext2D, pose: FireflyPose): void {
+  const { t, tilt, look, lookSide, hurt } = pose;
+  const [lr, lg, lb] = FIREFLY_LIGHT;
+  // The head turns a little ahead of the face, so the turn reads even at small sizes.
+  const turn = lookSide * look * 0.09;
+
+  // Antennae with glowing tips, bobbing a beat behind the body.
+  ctx.strokeStyle = '#3e2a20';
   ctx.lineWidth = 0.05;
   ctx.lineCap = 'round';
+  const tips: [number, number][] = [];
   for (const side of [-1, 1]) {
-    for (let i = 0; i < 3; i++) {
-      const sway = Math.sin(t * 3 + i + side) * 0.03;
-      const y0 = -0.12 + i * 0.16;
-      ctx.beginPath();
-      ctx.moveTo(side * 0.4, y0);
-      ctx.quadraticCurveTo(side * 0.66, y0 + 0.02, side * (0.62 + sway), y0 + 0.2);
-      ctx.stroke();
-    }
+    const sway = Math.sin(t * 3.4 + side) * 0.05 - tilt * 0.1 + turn * 1.5;
+    const tipX = side * 0.34 + sway;
+    const tipY = HEAD_Y - 0.66 + Math.cos(t * 3.4 + side) * 0.03;
+    ctx.beginPath();
+    ctx.moveTo(side * 0.12 + turn, HEAD_Y - 0.3);
+    ctx.quadraticCurveTo(side * 0.1 + turn, HEAD_Y - 0.6, tipX, tipY);
+    ctx.stroke();
+    tips.push([tipX, tipY]);
   }
-}
 
-/** The glowing abdomen, with faint segment bands. */
-function drawLantern(ctx: CanvasRenderingContext2D, glow: number): void {
-  const g = Math.min(1.25, glow);
-  const fill = ctx.createRadialGradient(0, 0.46, 0, 0, 0.4, 0.6);
-  fill.addColorStop(0, '#fffde6');
-  fill.addColorStop(0.4, mix('#f6f8a8', '#fffde6', g - 1));
-  fill.addColorStop(0.8, '#cde35c');
-  fill.addColorStop(1, '#93b23a');
-  ctx.fillStyle = fill;
-  ctx.fill(LANTERN);
+  const skin = ctx.createRadialGradient(-0.12 + turn, HEAD_Y - 0.14, 0.03, turn * 0.5, HEAD_Y, HEAD_R);
+  skin.addColorStop(0, '#8a604a');
+  skin.addColorStop(1, '#4a3226');
   ctx.save();
-  ctx.clip(LANTERN);
-  ctx.strokeStyle = 'rgba(120,150,40,0.35)';
-  ctx.lineWidth = 0.035;
-  for (const [y, w] of [
-    [0.42, 0.5],
-    [0.62, 0.4],
-  ] as const) {
-    ctx.beginPath();
-    ctx.moveTo(-w, y);
-    ctx.quadraticCurveTo(0, y + 0.18, w, y);
-    ctx.stroke();
-  }
+  ctx.translate(turn * 0.4, 0);
+  ctx.fillStyle = skin;
+  ctx.fill(HEAD);
+  // Lantern light on the underside of the head.
+  ctx.save();
+  ctx.clip(HEAD);
+  const under = ctx.createLinearGradient(0, HEAD_Y + 0.1, 0, HEAD_Y + HEAD_R);
+  under.addColorStop(0, 'rgba(240,230,140,0)');
+  under.addColorStop(1, 'rgba(240,230,140,0.22)');
+  ctx.fillStyle = under;
+  ctx.fillRect(-0.5, HEAD_Y, 1, 0.5);
+  if (look > 0.01) drawFace(ctx, look, lookSide, hurt);
   ctx.restore();
-}
+  ctx.restore();
 
-/** Head, antennae and the orange shield (pronotum) behind it. */
-function drawHead(ctx: CanvasRenderingContext2D, t: number, tilt: number, lean: number): void {
-  // Antennae, swaying and trailing a little behind lane changes.
-  ctx.strokeStyle = '#2a1d14';
-  ctx.fillStyle = '#2a1d14';
-  ctx.lineWidth = 0.045;
-  ctx.lineCap = 'round';
-  for (const side of [-1, 1]) {
-    const sway = Math.sin(t * 3.2 + side * 1.3) * 0.05 - tilt * 0.08;
-    const tipX = side * 0.36 + sway + lean;
-    const tipY = -1.1 + Math.cos(t * 3.2 + side) * 0.03;
+  // Glowing antenna tips.
+  for (const [tx, ty] of tips) {
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, 0.2);
+    g.addColorStop(0, `rgba(${lr},${lg},${lb},0.55)`);
+    g.addColorStop(1, `rgba(${lr},${lg},${lb},0)`);
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(side * 0.07 + lean, -0.72);
-    ctx.quadraticCurveTo(side * 0.06 + lean, -1.02, tipX, tipY);
-    ctx.stroke();
+    ctx.arc(tx, ty, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#f6fbc4';
     ctx.beginPath();
-    ctx.arc(tipX, tipY, 0.05, 0, Math.PI * 2);
+    ctx.arc(tx, ty, 0.065, 0, Math.PI * 2);
     ctx.fill();
   }
-
-  ctx.fillStyle = '#24180f';
-  ctx.beginPath();
-  ctx.ellipse(lean, -0.68, 0.17, 0.11, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const shield = ctx.createLinearGradient(0, -0.7, 0, -0.32);
-  shield.addColorStop(0, '#e8875c');
-  shield.addColorStop(1, '#b5502f');
-  ctx.fillStyle = shield;
-  ctx.beginPath();
-  ctx.ellipse(lean * 0.6, -0.5, 0.36, 0.2, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#2a1a12';
-  ctx.beginPath();
-  ctx.ellipse(lean * 0.6, -0.52, 0.09, 0.07, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255,220,190,0.22)';
-  ctx.beginPath();
-  ctx.ellipse(lean * 0.6 - 0.14, -0.58, 0.08, 0.04, -0.3, 0, Math.PI * 2);
-  ctx.fill();
 }
 
-/** Linear mix of two hex colours (k clamped to 0..1). */
-function mix(a: string, b: string, k: number): string {
-  const t = Math.max(0, Math.min(1, k));
-  const na = parseInt(a.slice(1), 16);
-  const nb = parseInt(b.slice(1), 16);
-  const ch = (s: number) => Math.round(((na >> s) & 255) * (1 - t) + ((nb >> s) & 255) * t);
-  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+/** Big shiny eyes and rosy cheeks, sliding in from one side as the head turns (clipped to the head). */
+function drawFace(ctx: CanvasRenderingContext2D, look: number, side: -1 | 1, hurt: boolean): void {
+  const e = look * look * (3 - 2 * look);
+  const shift = side * (1 - e) * 0.42;
+  const eyeY = HEAD_Y + 0.04;
+  for (const ex of [-0.15, 0.15]) {
+    const cx = ex + shift;
+    if (hurt) {
+      // Squeezed shut: > <
+      ctx.strokeStyle = '#1c120d';
+      ctx.lineWidth = 0.045;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      const d = ex < 0 ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(cx - d * 0.06, eyeY - 0.07);
+      ctx.lineTo(cx + d * 0.05, eyeY);
+      ctx.lineTo(cx - d * 0.06, eyeY + 0.07);
+      ctx.stroke();
+      continue;
+    }
+    ctx.fillStyle = '#1c120d';
+    ctx.beginPath();
+    ctx.ellipse(cx, eyeY, 0.085, 0.11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx - 0.028, eyeY - 0.045, 0.032, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 0.03, eyeY + 0.035, 0.015, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Cheeks and a tiny smile.
+  ctx.fillStyle = `rgba(240,130,110,${0.55 * e})`;
+  for (const cx of [-0.25, 0.25]) {
+    ctx.beginPath();
+    ctx.ellipse(cx + shift, eyeY + 0.11, 0.065, 0.04, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = '#1c120d';
+  ctx.lineWidth = 0.03;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (hurt) {
+    ctx.arc(shift, eyeY + 0.17, 0.035, Math.PI * 1.1, Math.PI * 1.9);
+  } else {
+    ctx.arc(shift, eyeY + 0.1, 0.045, Math.PI * 0.2, Math.PI * 0.8);
+  }
+  ctx.stroke();
 }

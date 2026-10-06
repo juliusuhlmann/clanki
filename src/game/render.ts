@@ -90,6 +90,10 @@ export class Renderer {
   private lightX = 0;
   private lightY = HOVER_Y;
   private glow = 1;
+  /** When the firefly last started glancing back at the camera, and when it next will. */
+  private glanceAt = -10;
+  private glanceSide: -1 | 1 = 1;
+  private nextGlance = 3;
 
   private shelves = makeShelfTextures(6);
   private letterSprites = new Map<string, HTMLCanvasElement>();
@@ -140,6 +144,7 @@ export class Renderer {
 
   /** Visual-only effect when a letter is collected. */
   burst(x: number, y: number, z: number): void {
+    this.glance();
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * Math.PI * 2;
       this.particles.push({
@@ -736,7 +741,28 @@ export class Renderer {
     const tilt = Math.max(-1, Math.min(1, (LANE_X[game.lane] - game.x) * 1.5));
     const flicker = game.invulnerableFor > 0 && Math.floor(game.invulnerableFor * 12) % 2 === 0 ? 0.35 : 1;
     // No dark shadow: the firefly is the light source, so its pool of light is drawn on the floor instead.
-    drawFirefly(this.ctx, p.x, p.y, 0.33 * p.s, { t: this.t, tilt, air, alpha: flicker, glow: this.glow });
+    if (this.t >= this.nextGlance) this.glance();
+    // After a hit it looks back with squeezed eyes for as long as the screen flashes.
+    const hurt = game.flash > 0;
+    const look = hurt ? 1 : this.lookAmount();
+    drawFirefly(this.ctx, p.x, p.y, 0.24 * p.s, { t: this.t, tilt, air, alpha: flicker, glow: this.glow, look, lookSide: this.glanceSide, hurt });
+  }
+
+  /** Starts a quick look back over one shoulder. */
+  private glance(): void {
+    if (this.t - this.glanceAt < 1.3) return;
+    this.glanceAt = this.t;
+    this.glanceSide = Math.random() < 0.5 ? -1 : 1;
+    this.nextGlance = this.t + 5 + Math.random() * 4;
+  }
+
+  /** 0..1: turn in quickly, hold, turn back. */
+  private lookAmount(): number {
+    const age = this.t - this.glanceAt;
+    if (age < 0 || age > 1.3) return 0;
+    if (age < 0.2) return age / 0.2;
+    if (age < 1.0) return 1;
+    return 1 - (age - 1.0) / 0.3;
   }
   // ---------- Particles ----------
 
