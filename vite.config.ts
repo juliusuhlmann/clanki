@@ -14,8 +14,9 @@ export default defineConfig({
         name: 'Clanki',
         short_name: 'Clanki',
         description: 'Spaced-repetition flashcards with a runner game between cards.',
-        theme_color: '#faf9f5',
-        background_color: '#faf9f5',
+        // Android's launch screen: the icon on this colour, so match the icon's dark tile.
+        theme_color: '#1a110b',
+        background_color: '#1a110b',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/clanki/',
