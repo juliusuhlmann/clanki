@@ -29,15 +29,6 @@ const BODY = (() => {
   return p;
 })();
 
-/** A radial gradient that shades a circle like a sphere lit from the upper left. */
-function sphere(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, lit: string, mid: string, rim: string): CanvasGradient {
-  const g = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.05, cx, cy, r);
-  g.addColorStop(0, lit);
-  g.addColorStop(0.55, mid);
-  g.addColorStop(1, rim);
-  return g;
-}
-
 export function drawFirefly(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, pose: FireflyPose): void {
   const { t, tilt, air, alpha, glow } = pose;
   const [lr, lg, lb] = FIREFLY_LIGHT;
@@ -92,58 +83,26 @@ export function drawFirefly(ctx: CanvasRenderingContext2D, x: number, y: number,
     tips.push([tipX, tipY]);
   }
 
-  // Body: shaded as a sphere lit from the upper left, darker toward the rim.
-  ctx.fillStyle = sphere(ctx, 0, 0, BODY_R, '#8a6450', BODY_COLOR, '#24170f');
+  // Body and head: flat circles.
+  ctx.fillStyle = BODY_COLOR;
   ctx.fill(BODY);
+  ctx.beginPath();
+  ctx.arc(0, HEAD_Y, HEAD_R, 0, Math.PI * 2);
+  ctx.fill();
 
+  // The belly lantern: the lower part of the body, lit.
   ctx.save();
   ctx.clip(BODY);
-  // The lantern fills most of the body; only a dark cap remains at the top, under the head.
-  // Brightest in the middle, deepening toward the edge, so it reads as a glowing ball.
-  const light = ctx.createRadialGradient(-0.06, 0.16, 0, 0, 0.04, BODY_R * 1.02);
+  // Most of the body glows; only a dark cap remains at the top, under the head.
+  const light = ctx.createRadialGradient(0, 0.25, 0, 0, 0.15, 0.68);
   light.addColorStop(0, '#fffef0');
-  light.addColorStop(0.45, Math.min(1.25, glow) > 1.05 ? '#fffbd0' : '#f8f4a4');
-  light.addColorStop(0.8, '#d6e86c');
-  light.addColorStop(1, '#a3bf45');
+  light.addColorStop(0.6, Math.min(1.25, glow) > 1.05 ? '#fffbd0' : '#f8f4a4');
+  light.addColorStop(1, '#d8ea72');
   ctx.fillStyle = light;
   ctx.beginPath();
   ctx.ellipse(0, 0.32, 0.8, 0.74, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Soft shadow where the head sits on the body.
-  const contact = ctx.createRadialGradient(0, HEAD_Y + HEAD_R * 0.75, 0, 0, HEAD_Y + HEAD_R * 0.75, 0.42);
-  contact.addColorStop(0, 'rgba(20,12,8,0.45)');
-  contact.addColorStop(1, 'rgba(20,12,8,0)');
-  ctx.fillStyle = contact;
-  ctx.fillRect(-0.6, -0.6, 1.2, 0.6);
   ctx.restore();
-
-  // Head: another small sphere, with lantern light bouncing onto its underside.
-  ctx.fillStyle = sphere(ctx, 0, HEAD_Y, HEAD_R, '#9a725c', '#523729', '#22160f');
-  ctx.beginPath();
-  ctx.arc(0, HEAD_Y, HEAD_R, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.save();
-  ctx.clip();
-  const bounce = ctx.createLinearGradient(0, HEAD_Y + HEAD_R * 0.2, 0, HEAD_Y + HEAD_R);
-  bounce.addColorStop(0, 'rgba(230,240,130,0)');
-  bounce.addColorStop(1, 'rgba(230,240,130,0.3)');
-  ctx.fillStyle = bounce;
-  ctx.fillRect(-HEAD_R, HEAD_Y, HEAD_R * 2, HEAD_R);
-  ctx.restore();
-
-  // Glossy highlights on the head and on the body's dark cap.
-  for (const [hx, hy, hr] of [
-    [-0.13, HEAD_Y - 0.15, 0.09],
-    [-0.36, -0.3, 0.07],
-  ] as const) {
-    const spec = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr * 1.6);
-    spec.addColorStop(0, 'rgba(255,240,220,0.55)');
-    spec.addColorStop(1, 'rgba(255,240,220,0)');
-    ctx.fillStyle = spec;
-    ctx.beginPath();
-    ctx.arc(hx, hy, hr * 1.6, 0, Math.PI * 2);
-    ctx.fill();
-  }
 
   // Glow on the belly and the antenna tips.
   ctx.globalCompositeOperation = 'lighter';
