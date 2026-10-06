@@ -52,6 +52,13 @@
     return r === null ? due : `${due} · ${Math.round(r * 100)}% recall`;
   }
 
+  // Year is only shown for cards added in an earlier year.
+  function addedLabel(createdAt: number): string {
+    const date = new Date(createdAt);
+    const sameYear = date.getFullYear() === new Date().getFullYear();
+    return `added ${date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) })}`;
+  }
+
   // Ctrl/Cmd+Enter submits the add form from either textarea.
   function submitOnCtrlEnter(e: KeyboardEvent) {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -133,7 +140,7 @@
             <div class="card-text">
               <p class="front">{card.front}</p>
               <p class="back-text">{card.back}</p>
-              <p class="due-label">{dueLabel(card)}</p>
+              <p class="due-label">{dueLabel(card)} · {addedLabel(card.createdAt)}</p>
             </div>
             <button
               class="btn ghost small"
