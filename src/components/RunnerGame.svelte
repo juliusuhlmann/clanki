@@ -181,33 +181,38 @@
     background: radial-gradient(ellipse at center, rgba(20, 12, 7, 0.1), rgba(20, 12, 7, 0.55));
   }
 
-  /* A lamp-lit word rather than a button box. */
+  /* A plain pill button in the app's accent colour, with a soft lamp glow. */
   .ready-btn {
-    padding: 0.4rem 1.6rem;
-    font-family: var(--serif);
-    font-size: 2.6rem;
+    min-width: 11rem;
+    min-height: 54px;
+    padding: 0.8rem 2.4rem;
+    font: inherit;
+    font-size: 1.15rem;
     font-weight: 600;
-    color: #fff3dc;
-    background: radial-gradient(ellipse closest-side, rgba(255, 210, 130, 0.22), transparent);
+    color: #fffaf3;
+    background: var(--accent);
     border: 0;
+    border-radius: 999px;
+    box-shadow: 0 8px 28px rgba(217, 119, 87, 0.45);
     cursor: pointer;
-    text-shadow: 0 0 24px rgba(255, 210, 130, 0.55);
-    animation: ready-glow 2.4s ease-in-out infinite;
+    transition: transform 0.12s, background 0.15s;
     -webkit-tap-highlight-color: transparent;
   }
 
+  .ready-btn:hover {
+    background: var(--accent-strong);
+  }
+
   .ready-btn:active {
-    transform: scale(0.96);
+    transform: scale(0.97);
   }
 
   .skip-btn {
     padding: 0.5rem 1rem;
     font: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(244, 237, 228, 0.6);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: rgba(244, 237, 228, 0.65);
     background: none;
     border: 0;
     cursor: pointer;
@@ -215,16 +220,6 @@
 
   .skip-btn:hover {
     color: #f4ede4;
-  }
-
-  @keyframes ready-glow {
-    0%,
-    100% {
-      text-shadow: 0 0 18px rgba(255, 210, 130, 0.4);
-    }
-    50% {
-      text-shadow: 0 0 30px rgba(255, 210, 130, 0.75);
-    }
   }
 
   .sheet {
