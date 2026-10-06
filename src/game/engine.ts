@@ -25,10 +25,11 @@ const START_HEARTS = 3;
 const INVULNERABLE_SECONDS = 1.2;
 const FIRST_ROW_DELAY = 22;
 
-// Letters give a speed burst: +20% that fades out over 3 seconds. Another letter
+// Letters give a speed burst: +20% that fades out over 4 seconds. Another letter
 // refills it rather than stacking, so top speed stays fair (≈ 0.65s to react at most).
+// The extra speed also covers extra distance, which is the score.
 export const BOOST_GAIN = 0.2;
-export const BOOST_SECONDS = 3;
+export const BOOST_SECONDS = 4;
 /** Half thickness of a ladder rail, for collisions. */
 const LADDER_HALF_THICKNESS = 0.06;
 

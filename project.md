@@ -23,8 +23,8 @@ Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
 - Its lantern lights the scene: a warm pool on the floor ahead, a glow on the nearby bookshelf, obstacles tinted as they come close, and darkness closing in away from it. The light breathes slowly and flares on a letter boost; it leaves a trail of twinkling motes
 - Controls: swipe left/right (or ←/→, A/D) to change lane; swipe up, tap, ↑/W or Space to jump; swipe down (or ↓/S) mid-jump to drop straight back down
 - Obstacles: book piles (jump or dodge), book carts (dodge), and ladders leaning across the corridor against a bookshelf: low over the middle lane (jump), high over the wall-side lane (glide under; jumping there hits it), absent over the far lane, where a book cart sometimes stands. Every row stays passable and rows are spaced so you can always react
-- Glowing letters are speed boosts, not collectibles: +20% speed fading out over 3s (smoothstep); another letter refills rather than stacks, so top speed stays fair (~0.65s reaction time minimum). Speed lines show while boosted
-- Score = distance only (so boosts raise it); best score kept in settings
+- Glowing letters are speed boosts, not collectibles: +20% speed fading out over 4s (smoothstep); another letter refills rather than stacks, so top speed stays fair (~0.65s reaction time minimum). Speed lines show while boosted
+- Score = distance covered in metres (1 world unit = 1 m); boosted speed covers more ground, so letters raise it. The HUD shows e.g. "214 m" (gold while boosted); best kept in settings
 - 3 hearts; a hit costs a heart, flashes the screen and vibrates the phone; the run ends when time or hearts run out
 - Appears every 6–10 cards (random). Length = 15s + earned seconds (Again 0, Hard +2, Good +4, Easy +4), max 40s. A bonus run is offered at the end of a session if ≥3 cards were answered since the last run
 - Skippable, and can be turned off in Settings. The game never affects scheduling

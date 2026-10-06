@@ -870,15 +870,15 @@ export class Renderer {
       this.heart(pad + 12 + i * 28, rowY, 10, i < game.hearts);
     }
 
-    // Time left and score.
+    // Time left and distance in metres (the unit in a softer colour).
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f3eee8';
     ctx.fillText(`${Math.ceil(game.timeLeft)}s`, this.w / 2, rowY);
     ctx.textAlign = 'right';
-    const score = `${game.score}`;
-    ctx.fillText(score, this.w - pad, rowY);
-    ctx.fillStyle = '#f2c35b';
-    ctx.fillText('✦', this.w - pad - ctx.measureText(score).width - 6, rowY);
+    ctx.fillStyle = 'rgba(243,238,232,0.6)';
+    ctx.fillText('m', this.w - pad, rowY);
+    ctx.fillStyle = game.boost > 0 ? '#f2c35b' : '#f3eee8';
+    ctx.fillText(`${game.score}`, this.w - pad - ctx.measureText('m').width - 4, rowY);
   }
 
   private drawHint(text: string, alpha: number): void {

@@ -158,9 +158,9 @@
     <div class="overlay">
       <div class="sheet">
         <p class="kicker">{endReason === 'hearts' ? 'Out of hearts' : "Time's up"}</p>
-        <h2>{score}</h2>
-        <p class="muted small">metres through the library</p>
-        <p class="best">{newBest ? '✦ New best!' : `Best: ${best}`}</p>
+        <h2>{score} m</h2>
+        <p class="muted small">through the library</p>
+        <p class="best">{newBest ? '✦ New best!' : `Best: ${best} m`}</p>
         <div class="buttons">
           <button class="btn primary big" onclick={onfinish}>{practice ? 'Done' : 'Back to cards'}</button>
         </div>
