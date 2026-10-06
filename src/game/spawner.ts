@@ -66,8 +66,8 @@ export function ladderHeightAt(side: -1 | 1, x: number): number | null {
 
 // Rolling cart: drifts from one lane into the next while still far away, then rolls
 // straight, so by the time it's close it's simply a cart in a lane.
-export const ROLL_START_Z = 44;
-export const ROLL_END_Z = 29;
+export const ROLL_START_Z = 32;
+export const ROLL_END_Z = 18;
 
 /** A rolling cart's sideways position at distance z. */
 export function rollingCartX(fromLane: number, toLane: number, z: number, laneX: readonly number[]): number {
@@ -83,9 +83,9 @@ export const TABLE_HEIGHT = 1.5;
 export const TABLE_DEPTH = 1.5;
 
 // Falling books: three books tumble off a high shelf one after another and stack into
-// a pile in a lane. The last lands at z ≈ 27, well before it reaches you even at top speed.
+// a pile in a lane. The last lands at z ≈ 15, late enough to surprise you, with the shadow as warning.
 export const BOOK_THICKNESS = [0.15, 0.16, 0.19];
-export const BOOK_FALL_START_Z = 41;
+export const BOOK_FALL_START_Z = 29;
 export const BOOK_FALL_LENGTH = 10;
 export const BOOK_STAGGER = 2;
 
