@@ -25,7 +25,7 @@ const ATTRACT_SPEED = 5;
 export const START_HEARTS = 2;
 const INVULNERABLE_SECONDS = 1.2;
 /** Seconds from the start of a run until the first row reaches you. */
-const FIRST_ROW_SECONDS = 1.1;
+const FIRST_ROW_SECONDS = 2;
 /** Seconds into a run before rolling carts, reading tables and falling books appear. */
 const VARIETY_AFTER = 3;
 

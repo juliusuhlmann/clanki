@@ -222,11 +222,12 @@ describe('Game', () => {
     });
   });
 
-  it('starts with the corridor already filled, the first row about a second away', () => {
+  it('starts with the corridor already filled, the first row about two seconds away', () => {
     const game = new Game(3);
     game.start(30);
     const nearest = Math.min(...game.obstacles.map((o) => o.z), ...game.letters.map((l) => l.z));
-    expect(nearest / game.speed).toBeLessThan(1.5);
+    expect(nearest / game.speed).toBeGreaterThan(1.8);
+    expect(nearest / game.speed).toBeLessThan(2.5);
     expect(game.obstacles.length).toBeGreaterThan(1);
   });
 
