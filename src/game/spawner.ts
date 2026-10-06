@@ -129,7 +129,7 @@ export function minGap(speed: number): number {
   return Math.max(7, speed * 0.8);
 }
 
-type Pattern = 'pile' | 'cart' | 'pair' | 'ladder' | 'letters' | 'rollingCart' | 'table' | 'books';
+type Pattern = 'pile' | 'pair' | 'ladder' | 'letters' | 'rollingCart' | 'table' | 'books';
 
 export class Spawner {
   private letterIndex = 0;
@@ -177,7 +177,6 @@ export class Spawner {
     const lanes = [0, 1, 2];
     const patterns: [number, Pattern][] = [
       [0.2, 'pile'],
-      [0.04, 'cart'], // a lone cart in one lane is too easy, so it's rare
       [0.3, 'pair'],
       [0.15, 'ladder'],
       [0.07, 'letters'],
@@ -200,8 +199,6 @@ export class Spawner {
       const lane = this.pick(lanes);
       obstacles = [this.pile(lane)];
       if (this.rng() < 0.6) letters = this.letterArc(lane);
-    } else if (pattern === 'cart') {
-      obstacles = [this.cart(this.pick(lanes))];
     } else if (pattern === 'pair') {
       const free = this.pick(lanes);
       obstacles = lanes
@@ -222,9 +219,9 @@ export class Spawner {
       const from = this.pick(lanes);
       const to = from === 1 ? this.pick([0, 2]) : 1;
       obstacles = [{ ...this.cart(to), kind: 'rollingCart', fromLane: from }];
-      // Sometimes a pile waits in the third lane, so the lane the cart leaves is the way through.
+      // A pile waits in the third lane (a cart is never alone), so the lane the cart leaves is the way through.
       const third = lanes.find((l) => l !== from && l !== to)!;
-      if (this.rng() < 0.5) obstacles.push(this.pile(third));
+      obstacles.push(this.pile(third));
     } else if (pattern === 'table') {
       const full = this.rng() < 0.45;
       const start = full ? 0 : this.pick([0, 1]);

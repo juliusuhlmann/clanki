@@ -29,6 +29,16 @@ describe('Spawner', () => {
     }
   });
 
+  it('never puts a book cart alone in a row', () => {
+    const spawner = new Spawner(createRng(17));
+    for (let i = 0; i < 3000; i++) {
+      const row = spawner.next(12 + (i % 10));
+      if (row.obstacles.some((o) => o.kind === 'cart' || o.kind === 'rollingCart')) {
+        expect(row.obstacles.length).toBeGreaterThan(1);
+      }
+    }
+  });
+
   it('only adds rolling carts, tables and falling books when variety is on', () => {
     const plain = new Spawner(createRng(3));
     const varied = new Spawner(createRng(3));
