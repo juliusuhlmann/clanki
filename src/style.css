@@ -227,11 +227,12 @@ p {
 
 .topbar.home .topbar-inner {
   justify-content: flex-end;
-  padding-top: calc(1.1rem + env(safe-area-inset-top));
+  padding-top: calc(3.35rem + env(safe-area-inset-top));
 }
 
+/* Give the greeting some breathing room from the top of the screen. */
 .content.home {
-  padding-top: calc(1.25rem + env(safe-area-inset-top));
+  padding-top: calc(3.5rem + env(safe-area-inset-top));
 }
 
 /* Keep a long greeting clear of the settings button. */
