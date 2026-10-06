@@ -18,8 +18,9 @@ const GRAVITY = 17;
 const DROP_VELOCITY = 7; // from the top of a jump: ~0.14s to land (gravity alone: ~0.36s)
 const LANE_SWITCH_RATE = 16;
 
-const START_SPEED = 11;
-const MAX_EXTRA_SPEED = 9;
+const START_SPEED = 14;
+const MAX_EXTRA_SPEED = 12; // top speed 26 m/s
+const SPEED_RAMP_SECONDS = 18;
 const ATTRACT_SPEED = 5;
 export const START_HEARTS = 2;
 const INVULNERABLE_SECONDS = 1.2;
@@ -154,7 +155,7 @@ export class Game {
     if (this.mode === 'run') {
       this.elapsed += dt;
       this.boost = Math.max(0, this.boost - dt / BOOST_SECONDS);
-      const base = START_SPEED + MAX_EXTRA_SPEED * (1 - Math.exp(-this.elapsed / 25));
+      const base = START_SPEED + MAX_EXTRA_SPEED * (1 - Math.exp(-this.elapsed / SPEED_RAMP_SECONDS));
       const eased = this.boost * this.boost * (3 - 2 * this.boost); // smoothstep: gentle fade-out
       this.speed = base * (1 + BOOST_GAIN * eased);
     } else if (this.mode === 'over') {

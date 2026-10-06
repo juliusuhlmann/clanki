@@ -66,8 +66,8 @@ export function ladderHeightAt(side: -1 | 1, x: number): number | null {
 
 // Rolling cart: drifts from one lane into the next while still far away, then rolls
 // straight, so by the time it's close it's simply a cart in a lane.
-export const ROLL_START_Z = 30;
-export const ROLL_END_Z = 15;
+export const ROLL_START_Z = 34;
+export const ROLL_END_Z = 19;
 
 /** A rolling cart's sideways position at distance z. */
 export function rollingCartX(fromLane: number, toLane: number, z: number, laneX: readonly number[]): number {
@@ -83,9 +83,9 @@ export const TABLE_HEIGHT = 1.5;
 export const TABLE_DEPTH = 1.5;
 
 // Falling books: three books tumble off a high shelf one after another and stack into
-// a pile in a lane. The last lands at z ≈ 12, well before it reaches you.
+// a pile in a lane. The last lands at z ≈ 17, well before it reaches you even at top speed.
 export const BOOK_THICKNESS = [0.15, 0.16, 0.19];
-export const BOOK_FALL_START_Z = 27;
+export const BOOK_FALL_START_Z = 31;
 export const BOOK_FALL_LENGTH = 10;
 export const BOOK_STAGGER = 2;
 
@@ -124,9 +124,9 @@ export function createRng(seed: number): () => number {
   };
 }
 
-/** Minimum distance between rows: about 0.6s, still enough to cross two lanes at this speed. */
+/** Minimum distance between rows: enough time to cross two lanes at this speed. */
 export function minGap(speed: number): number {
-  return Math.max(6, speed * 0.6);
+  return Math.max(7, speed * 0.8);
 }
 
 type Pattern = 'pile' | 'cart' | 'pair' | 'ladder' | 'letters' | 'rollingCart' | 'table' | 'books';
@@ -247,7 +247,7 @@ export class Spawner {
       extra = 5 * LETTER_SPACING;
     }
 
-    const gapAfter = Math.max(minGap(speed) + this.rng() * speed * 0.4, extra + 3);
+    const gapAfter = Math.max(minGap(speed) + this.rng() * speed * 0.6, extra + 3);
     return { obstacles, letters, gapAfter };
   }
 }

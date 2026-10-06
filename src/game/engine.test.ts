@@ -15,6 +15,26 @@ function simulate(game: Game, seconds: number, actionsAt: Record<number, Action>
   return events;
 }
 
+/**
+ * Runs the game and jumps once the first obstacle is close enough that the top of the jump
+ * (~0.36s after take-off) comes as it passes, whatever the current speed. Other actions as in simulate.
+ */
+function simulateJump(game: Game, seconds: number, actionsAt: Record<number, Action> = {}): GameEvent[] {
+  const events: GameEvent[] = [];
+  let jumped = false;
+  const steps = Math.round(seconds / DT);
+  for (let i = 0; i < steps; i++) {
+    const actions: Action[] = actionsAt[i] ? [actionsAt[i]] : [];
+    const o = game.obstacles[0];
+    if (!jumped && o && o.z <= game.speed * 0.3) {
+      actions.push('jump');
+      jumped = true;
+    }
+    events.push(...game.update(DT, actions));
+  }
+  return events;
+}
+
 /** A started game with no random rows, so tests control the obstacles. */
 function emptyGame(seconds = 30): Game {
   const game = new Game(1);
@@ -53,8 +73,7 @@ describe('Game', () => {
   it('jumping clears a pile', () => {
     const game = emptyGame();
     addObstacle(game, 'pile', 1, 5);
-    // At ~11 units/s the pile arrives after ~0.45s; jump a little before.
-    const events = simulate(game, 1.2, { 15: 'jump' });
+    const events = simulateJump(game, 1.2);
     expect(events.some((e) => e.type === 'hit')).toBe(false);
     expect(game.hearts).toBe(START_HEARTS);
   });
@@ -91,7 +110,7 @@ describe('Game', () => {
     expect(simulate(glide, 1.2).some((e) => e.type === 'hit')).toBe(false);
     const jump = emptyGame();
     table(jump);
-    expect(simulate(jump, 1.2, { 15: 'jump' }).some((e) => e.type === 'hit')).toBe(true);
+    expect(simulateJump(jump, 1.2).some((e) => e.type === 'hit')).toBe(true);
   });
 
   it('falling books land as a pile you can hit or jump over', () => {
@@ -102,14 +121,13 @@ describe('Game', () => {
     expect(simulate(stay, 3.5).some((e) => e.type === 'hit')).toBe(true);
     const jump = emptyGame();
     books(jump);
-    // ~30 units at 11+/s: arrives after ~2.6s.
-    expect(simulate(jump, 3.5, { 145: 'jump' }).some((e) => e.type === 'hit')).toBe(false);
+    expect(simulateJump(jump, 3.5).some((e) => e.type === 'hit')).toBe(false);
   });
 
   it('jumping does not clear a cart, but changing lanes does', () => {
     const jumper = emptyGame();
     addObstacle(jumper, 'cart', 1, 5);
-    simulate(jumper, 1.2, { 15: 'jump' });
+    simulateJump(jumper, 1.2);
     expect(jumper.hearts).toBe(START_HEARTS - 1);
 
     const dodger = emptyGame();
@@ -178,7 +196,7 @@ describe('Game', () => {
 
       const jump = emptyGame();
       addLadder(jump, -1, 5);
-      simulate(jump, 1.2, { 15: 'jump' });
+      simulateJump(jump, 1.2);
       expect(jump.hearts).toBe(START_HEARTS);
     });
 
@@ -190,7 +208,7 @@ describe('Game', () => {
 
       const jumpUnder = emptyGame();
       addLadder(jumpUnder, -1, 5);
-      simulate(jumpUnder, 1.2, { 2: 'left', 15: 'jump' });
+      simulateJump(jumpUnder, 1.2, { 2: 'left' });
       expect(jumpUnder.hearts).toBe(START_HEARTS - 1);
     });
 
