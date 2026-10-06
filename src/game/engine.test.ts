@@ -41,6 +41,8 @@ function emptyGame(seconds = 30): Game {
   game.start(seconds);
   // Push the first random row far into the future.
   (game as unknown as { untilNextRow: number }).untilNextRow = 1e9;
+  game.obstacles = [];
+  game.letters = [];
   return game;
 }
 
@@ -218,6 +220,14 @@ describe('Game', () => {
       simulate(game, 1.2, { 2: 'right' });
       expect(game.hearts).toBe(START_HEARTS);
     });
+  });
+
+  it('starts with the corridor already filled, the first row about a second away', () => {
+    const game = new Game(3);
+    game.start(30);
+    const nearest = Math.min(...game.obstacles.map((o) => o.z), ...game.letters.map((l) => l.z));
+    expect(nearest / game.speed).toBeLessThan(1.5);
+    expect(game.obstacles.length).toBeGreaterThan(1);
   });
 
   it('spawns obstacles during a normal run', () => {

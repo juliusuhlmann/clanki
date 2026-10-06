@@ -24,7 +24,8 @@ const SPEED_RAMP_SECONDS = 18;
 const ATTRACT_SPEED = 5;
 export const START_HEARTS = 2;
 const INVULNERABLE_SECONDS = 1.2;
-const FIRST_ROW_DELAY = 10; // the first obstacles arrive within about a second
+/** Seconds from the start of a run until the first row reaches you. */
+const FIRST_ROW_SECONDS = 1.1;
 /** Seconds into a run before rolling carts, reading tables and falling books appear. */
 const VARIETY_AFTER = 3;
 
@@ -106,7 +107,7 @@ export class Game {
   letters: Letter[] = [];
 
   private spawner: Spawner;
-  private untilNextRow = FIRST_ROW_DELAY;
+  private untilNextRow = 0;
   private runDistance = 0;
   private rng: () => number;
 
@@ -135,8 +136,20 @@ export class Game {
     this.runDistance = 0;
     this.obstacles = [];
     this.letters = [];
-    this.untilNextRow = FIRST_ROW_DELAY;
     this.endReason = null;
+    // Fill the corridor right away: the first row is about a second ahead, the rest follow
+    // at normal spacing out to the spawn distance.
+    let z = this.speed * FIRST_ROW_SECONDS;
+    while (z < SPAWN_Z) z += this.spawnRow(z);
+    this.untilNextRow = z - SPAWN_Z;
+  }
+
+  /** Adds the spawner's next row at distance z; returns the gap to the row after it. */
+  private spawnRow(z: number): number {
+    const row = this.spawner.next(this.speed, this.elapsed >= VARIETY_AFTER);
+    for (const o of row.obstacles) this.obstacles.push({ ...o, z, hit: false });
+    for (const l of row.letters) this.letters.push({ ...l, z: z + l.dz, taken: false, phase: this.rng() * Math.PI * 2 });
+    return row.gapAfter;
   }
 
   private act(action: Action): void {
@@ -197,13 +210,7 @@ export class Game {
 
     // Spawn new rows.
     this.untilNextRow -= dz;
-    if (this.untilNextRow <= 0) {
-      const row = this.spawner.next(this.speed, this.elapsed >= VARIETY_AFTER);
-      for (const o of row.obstacles) this.obstacles.push({ ...o, z: SPAWN_Z, hit: false });
-      for (const l of row.letters)
-        this.letters.push({ ...l, z: SPAWN_Z + l.dz, taken: false, phase: this.rng() * Math.PI * 2 });
-      this.untilNextRow = row.gapAfter;
-    }
+    if (this.untilNextRow <= 0) this.untilNextRow += this.spawnRow(SPAWN_Z + this.untilNextRow);
 
     this.checkCollisions(events);
 
