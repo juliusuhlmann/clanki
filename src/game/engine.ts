@@ -15,7 +15,7 @@ const SPARK_HALF_DEPTH = 0.25;
 
 const JUMP_VELOCITY = 6.2;
 const GRAVITY = 17;
-const DROP_VELOCITY = 12;
+const DROP_VELOCITY = 7; // from the top of a jump: ~0.14s to land (gravity alone: ~0.36s)
 const LANE_SWITCH_RATE = 16;
 
 const START_SPEED = 11;
