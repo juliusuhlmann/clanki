@@ -1073,6 +1073,11 @@ input[type='search'] {
   text-align: center;
 }
 
+.setting input[type='password'] {
+  width: 9rem;
+  min-width: 0;
+}
+
 .import-summary {
   padding: 1rem 1.1rem;
   border-top: 1px solid var(--border);

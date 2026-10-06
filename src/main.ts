@@ -3,12 +3,13 @@ import './style.css';
 import { mount } from 'svelte';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.svelte';
-import { syncRepoDecks } from './lib/repoDecks';
+import { startSync } from './lib/syncRunner.svelte';
 
 mount(App, { target: document.querySelector<HTMLDivElement>('#app')! });
 
-// Merge the decks kept in the repo's decks/ folder; the screens update live as cards arrive.
-syncRepoDecks();
+// Sync with the other devices and merge the decks kept in the repo's decks/ folder (see
+// syncRunner); the screens update live as cards arrive.
+void startSync();
 
 registerSW({
   immediate: true,

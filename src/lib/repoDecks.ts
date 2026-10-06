@@ -1,4 +1,4 @@
-import { db as defaultDb, getSetting, setSetting, type Card, type ClankiDb } from './db';
+import { db as defaultDb, getSetting, recordCardDeletions, setSetting, type Card, type ClankiDb } from './db';
 import { newCardSchedule } from './scheduler';
 
 // Decks kept as JSON files in the repo's `decks/` folder (written by an agent, see decks/README.md).
@@ -55,10 +55,12 @@ export async function applyRepoDeck(
   const prefix = `${deckId}:`;
   const result = { added: 0, updated: 0, removed: 0 };
 
-  await database.transaction('rw', database.decks, database.cards, database.reviews, async () => {
+  // Every device applies the same files itself, so these writes must never beat real changes from
+  // another device in sync (newer updatedAt wins): new things get updatedAt 0, edits move it by 1 ms.
+  await database.transaction('rw', [database.decks, database.cards, database.reviews, database.deletions], async () => {
     const deck = await database.decks.get(deckId);
-    if (!deck) await database.decks.add({ id: deckId, name: file.name, createdAt: now, updatedAt: now });
-    else if (deck.name !== file.name) await database.decks.update(deckId, { name: file.name, updatedAt: now });
+    if (!deck) await database.decks.add({ id: deckId, name: file.name, createdAt: now, updatedAt: 0 });
+    else if (deck.name !== file.name) await database.decks.update(deckId, { name: file.name, updatedAt: deck.updatedAt + 1 });
 
     const existing = new Map((await database.cards.where('deckId').equals(deckId).toArray()).map((c) => [c.id, c]));
     const inFile = new Set<string>();
@@ -69,10 +71,10 @@ export async function applyRepoDeck(
       const old = existing.get(id);
       if (!old) {
         // Distinct creation times keep the file's order as the order new cards are studied in.
-        added.push({ id, deckId, front: c.front, back: c.back, createdAt: now + i, updatedAt: now, ...newCardSchedule(now) });
+        added.push({ id, deckId, front: c.front, back: c.back, createdAt: now + i, updatedAt: 0, ...newCardSchedule(now) });
       } else if (old.front !== c.front || old.back !== c.back) {
         result.updated++;
-        await database.cards.update(id, { front: c.front, back: c.back, updatedAt: now });
+        await database.cards.update(id, { front: c.front, back: c.back, updatedAt: old.updatedAt + 1 });
       }
     }
     await database.cards.bulkAdd(added);
@@ -80,6 +82,7 @@ export async function applyRepoDeck(
 
     const gone = [...existing.keys()].filter((id) => id.startsWith(prefix) && !inFile.has(id));
     if (gone.length) {
+      await recordCardDeletions(gone, now, database);
       await database.reviews.where('cardId').anyOf(gone).delete();
       await database.cards.bulkDelete(gone);
     }

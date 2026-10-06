@@ -1,0 +1,10 @@
+# Clanki sync worker. Deploy from this folder with `npx wrangler deploy`
+# (not part of the GitHub Pages workflow). The key lives in the secret SYNC_KEY.
+name = "clanki-sync"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "clanki-sync"
+database_id = "00000000-0000-0000-0000-000000000000"

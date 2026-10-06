@@ -2,3 +2,7 @@ node_modules/
 dist/
 dev-dist/
 *.log
+
+# Cloudflare worker local state and secrets
+sync/.wrangler
+sync/.dev.vars

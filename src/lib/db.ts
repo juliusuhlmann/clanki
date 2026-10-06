@@ -60,12 +60,26 @@ export interface LibraryRun {
   cards: number;
 }
 
+/** Something deleted on this device that sync still has to tell the other devices about. */
+export interface Deletion {
+  kind: 'deck' | 'card' | 'review' | 'libraryRun';
+  /** The sync id: deck/card id, `reviewSyncId(...)` for reviews. */
+  id: string;
+  at: number;
+}
+
+/** Reviews' local ids differ per device, so sync identifies them by card and time. */
+export function reviewSyncId(r: Pick<Review, 'cardId' | 'reviewedAt'>): string {
+  return `${r.cardId}|${r.reviewedAt}`;
+}
+
 export class ClankiDb extends Dexie {
   decks!: EntityTable<Deck, 'id'>;
   cards!: EntityTable<Card, 'id'>;
   reviews!: EntityTable<Review, 'id'>;
   settings!: EntityTable<Setting, 'key'>;
   libraryRuns!: EntityTable<LibraryRun, 'id'>;
+  deletions!: Dexie.Table<Deletion, [string, string]>;
 
   constructor(name = 'clanki') {
     super(name);
@@ -78,10 +92,26 @@ export class ClankiDb extends Dexie {
     this.version(2).stores({
       libraryRuns: '++id, letters, finishedAt',
     });
+    this.version(3).stores({
+      deletions: '[kind+id]',
+    });
   }
 }
 
 export const db = new ClankiDb();
+
+/**
+ * Notes cards (and their reviews) as deleted, for sync. Call inside the deleting transaction,
+ * which must include `deletions`, before the rows are gone.
+ */
+export async function recordCardDeletions(cardIds: string[], now: number, database: ClankiDb = db): Promise<void> {
+  if (!cardIds.length) return;
+  const reviews = await database.reviews.where('cardId').anyOf(cardIds).toArray();
+  await database.deletions.bulkPut([
+    ...cardIds.map((id): Deletion => ({ kind: 'card', id, at: now })),
+    ...reviews.map((r): Deletion => ({ kind: 'review', id: reviewSyncId(r), at: now })),
+  ]);
+}
 
 /** Saves a finished library run and returns its id. */
 export async function saveLibraryRun(run: Omit<LibraryRun, 'id'>, database: ClankiDb = db): Promise<number> {

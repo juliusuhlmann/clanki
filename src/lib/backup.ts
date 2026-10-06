@@ -49,11 +49,11 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 const isStr = (v: unknown): v is string => typeof v === 'string';
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
-function isDeck(v: unknown): v is Deck {
+export function isDeck(v: unknown): v is Deck {
   return isObj(v) && isStr(v.id) && isStr(v.name) && isNum(v.createdAt) && isNum(v.updatedAt);
 }
 
-function isCard(v: unknown): v is Card {
+export function isCard(v: unknown): v is Card {
   return (
     isObj(v) &&
     isStr(v.id) &&
@@ -70,7 +70,7 @@ function isCard(v: unknown): v is Card {
   );
 }
 
-function isReview(v: unknown): v is Review {
+export function isReview(v: unknown): v is Review {
   return isObj(v) && isStr(v.cardId) && isStr(v.deckId) && isNum(v.rating) && isNum(v.reviewedAt);
 }
 

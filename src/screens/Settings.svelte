@@ -4,6 +4,8 @@
   import { RUN_SECONDS } from '../game/reward';
   import { exportData, backupFileName, parseBackup, planImport, applyImport, type ImportPlan } from '../lib/backup';
   import { href } from '../lib/router.svelte';
+  import { link, unlink } from '../lib/sync';
+  import { refreshStatus, syncNow, syncStatus } from '../lib/syncRunner.svelte';
 
   let newPerDay = $state<number | null>(null);
   let saved = $state(false);
@@ -13,10 +15,51 @@
   let importDone = $state('');
   let fileInput: HTMLInputElement | undefined = $state();
 
-  onMount(async () => {
-    newPerDay = await getNewPerDay();
-    persisted = (await navigator.storage?.persisted?.()) ?? null;
+  let syncKey = $state('');
+  let online = $state(navigator.onLine);
+  let now = $state(Date.now());
+
+  onMount(() => {
+    void (async () => {
+      newPerDay = await getNewPerDay();
+      persisted = (await navigator.storage?.persisted?.()) ?? null;
+      await refreshStatus();
+    })();
+    const onlineChange = () => (online = navigator.onLine);
+    window.addEventListener('online', onlineChange);
+    window.addEventListener('offline', onlineChange);
+    // Keeps "synced 2 min ago" current.
+    const timer = setInterval(() => (now = Date.now()), 30_000);
+    return () => {
+      window.removeEventListener('online', onlineChange);
+      window.removeEventListener('offline', onlineChange);
+      clearInterval(timer);
+    };
   });
+
+  function ago(at: number): string {
+    const minutes = Math.floor((now - at) / 60_000);
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} h ago`;
+    return new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  }
+
+  async function doLink(e: SubmitEvent) {
+    e.preventDefault();
+    if (!syncKey.trim()) return;
+    await link(syncKey);
+    syncKey = '';
+    now = Date.now();
+    await syncNow();
+    now = Date.now();
+  }
+
+  async function doUnlink() {
+    await unlink();
+    await refreshStatus();
+  }
 
   async function saveNewPerDay() {
     if (newPerDay === null || !Number.isFinite(newPerDay)) return;
@@ -92,6 +135,52 @@
     </span>
     <a class="btn small" href={href({ name: 'practiceRun' })}>Start</a>
   </div>
+</section>
+
+<p class="section-label">Sync</p>
+<section class="panel settings-group">
+  {#if syncStatus.linked}
+    <div class="setting">
+      <span class="label">
+        Phone and laptop
+        <span class="hint">
+          {#if syncStatus.syncing}
+            Syncing…
+          {:else if syncStatus.error}
+            <span class="error">{syncStatus.error}</span>
+            {#if syncStatus.pending}
+              {syncStatus.pending} change{syncStatus.pending === 1 ? '' : 's'} will sync once it works again.
+            {/if}
+          {:else if !online}
+            Offline. {syncStatus.pending
+              ? `${syncStatus.pending} change${syncStatus.pending === 1 ? '' : 's'} will sync when you're back online.`
+              : 'Everything is synced.'}
+          {:else if syncStatus.lastAt}
+            Synced {ago(syncStatus.lastAt)}.
+          {:else}
+            Not synced yet.
+          {/if}
+        </span>
+      </span>
+      <button class="btn small" onclick={() => syncNow()} disabled={syncStatus.syncing || !online}>Sync now</button>
+    </div>
+    <div class="setting">
+      <span class="label">
+        Unlink this device
+        <span class="hint">Stops syncing. Cards stay on this device.</span>
+      </span>
+      <button class="btn small ghost" onclick={doUnlink}>Unlink</button>
+    </div>
+  {:else}
+    <form class="setting" onsubmit={doLink}>
+      <span class="label">
+        Link this device
+        <span class="hint">Paste the sync key. Cards and progress then sync across your devices.</span>
+      </span>
+      <input type="password" bind:value={syncKey} placeholder="Sync key" aria-label="Sync key" autocomplete="off" />
+      <button class="btn small primary" type="submit" disabled={!syncKey.trim()}>Link</button>
+    </form>
+  {/if}
 </section>
 
 <p class="section-label">Backup</p>

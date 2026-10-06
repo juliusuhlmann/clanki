@@ -78,10 +78,17 @@ _TODO_
 
 ## Data and sync
 
-- Everything is stored on the device in IndexedDB (Dexie), in `src/lib/db.ts`: tables `decks`, `cards` (FSRS state + indexed `due`), `reviews` (an append-only log of every answer, for future exam mode, stats and the leech boss) and `settings`
-- Backup: Settings → Export downloads `clanki-backup-YYYY-MM-DD.json`; Import merges it (new items added, the newer `updatedAt` wins, reviews deduplicated) after showing a summary
-- Cards from `decks/` reach every device with the app itself. Cards made by hand and review progress stay per device: moving them means export on one device and import on the other
-- Known limitation: deletions don't sync. Importing an older backup brings deleted cards back
+- Everything is stored on the device in IndexedDB (Dexie), in `src/lib/db.ts`: tables `decks`, `cards` (FSRS state + indexed `due`), `reviews` (an append-only log of every answer, for future exam mode, stats and the leech boss), `libraryRuns`, `deletions` (sync tombstones not sent yet) and `settings`
+- Offline first: studying never waits for the network. The app shell is precached, so it all works without a connection
+- **Sync** (Settings → Sync, linked once per device with a shared key) via a Cloudflare Worker + D1 in `sync/` (see `sync/README.md`):
+  - Protocol and merge rule in `sync/src/protocol.ts`, shared by the worker, the client and the tests. One `POST /sync` pushes this device's changes and returns everything after its cursor
+  - Records are `(kind, id, updatedAt, deleted, data)` for decks, cards, reviews (id `cardId|reviewedAt`) and library runs; the newer `updatedAt` wins, ties keep what's there; deletions are tombstones
+  - Client (`src/lib/sync.ts`): pushes everything changed since the last successful push (by `updatedAt` / `reviewedAt` / `finishedAt`) plus pending deletions; `src/lib/syncRunner.svelte.ts` runs it on start, when coming online or to the foreground, 3s after study changes, and every minute while open
+  - Repo deck writes use `updatedAt` 0 (new) and `old + 1` (edits), so a device creating a repo deck from the file never overwrites progress synced from another device
+  - Not synced: settings (new cards per day is per device)
+  - Known trade-off: if the same card is studied on two devices while both are offline, the later answer's FSRS state wins; both answers stay in the history
+- Backup: Settings → Export downloads `clanki-backup-YYYY-MM-DD.json`; Import merges it (new items added, the newer `updatedAt` wins, reviews deduplicated) after showing a summary. Still useful as an offline copy; with sync on, it isn't needed to move cards between devices
+- Cards from `decks/` reach every device with the app itself
 
 ## Roadmap
 

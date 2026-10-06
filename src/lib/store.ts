@@ -1,4 +1,4 @@
-import { db as defaultDb, type Card, type ClankiDb, type Deck } from './db';
+import { db as defaultDb, recordCardDeletions, type Card, type ClankiDb, type Deck } from './db';
 import { newCardSchedule } from './scheduler';
 
 export async function createDeck(name: string, database: ClankiDb = defaultDb): Promise<Deck> {
@@ -14,7 +14,11 @@ export async function renameDeck(id: string, name: string, database: ClankiDb = 
 
 /** Deletes a deck together with its cards and their review history. */
 export async function deleteDeck(id: string, database: ClankiDb = defaultDb): Promise<void> {
-  await database.transaction('rw', database.decks, database.cards, database.reviews, async () => {
+  await database.transaction('rw', [database.decks, database.cards, database.reviews, database.deletions], async () => {
+    const now = Date.now();
+    const cardIds = (await database.cards.where('deckId').equals(id).primaryKeys()) as string[];
+    await recordCardDeletions(cardIds, now, database);
+    await database.deletions.put({ kind: 'deck', id, at: now });
     await database.cards.where('deckId').equals(id).delete();
     await database.reviews.where('deckId').equals(id).delete();
     await database.decks.delete(id);
@@ -56,7 +60,8 @@ export async function updateCard(
 }
 
 export async function deleteCard(id: string, database: ClankiDb = defaultDb): Promise<void> {
-  await database.transaction('rw', database.cards, database.reviews, async () => {
+  await database.transaction('rw', [database.cards, database.reviews, database.deletions], async () => {
+    await recordCardDeletions([id], Date.now(), database);
     await database.reviews.where('cardId').equals(id).delete();
     await database.cards.delete(id);
   });
