@@ -1,7 +1,7 @@
 <script lang="ts">
   import { liveQuery } from 'dexie';
-  import { db } from '../lib/db';
-  import { deckCounts } from '../lib/scheduler';
+  import { db, topLibraryRuns } from '../lib/db';
+  import { deckCounts, libraryRunSize } from '../lib/scheduler';
   import { createDeck, renameDeck, deleteDeck } from '../lib/store';
   import { href } from '../lib/router.svelte';
 
@@ -11,10 +11,7 @@
     const now = Date.now();
     return Promise.all(all.map(async (deck) => ({ deck, counts: await deckCounts(deck.id, now) })));
   });
-  const best = liveQuery(async () => {
-    const row = await db.settings.get('runnerBestLetters');
-    return typeof row?.value === 'number' ? row.value : 0;
-  });
+  const best = liveQuery(async () => (await topLibraryRuns(1))[0]?.letters ?? 0);
 
   const hour = new Date().getHours();
   const greeting = hour < 5 ? 'Burning the midnight oil' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -146,7 +143,7 @@
 <!-- The library run: a lamp over a shelf at the bottom; the deck list scrolls behind it. -->
 <div class="lamp-dock">
   <div class="lamp-shelf"></div>
-  <a class="lamp-run" href={href({ name: 'practiceRun' })} aria-label="Library run">
+  <a class="lamp-run" href={href({ name: 'libraryRun' })} aria-label="Library run">
     <div class="lamp-swing">
       <div class="lamp-cone"></div>
       <svg class="lamp-svg" viewBox="0 0 100 80" aria-hidden="true">
@@ -203,7 +200,13 @@
     <div class="lamp-pool"></div>
     <span class="lamp-label">
       <span class="lamp-title">Library run</span>
-      <span class="lamp-best">{$best ? `Best: ${$best} letters` : 'Start a run'}</span>
+      <span class="lamp-best">
+        {#if totalToday > 0}
+          {libraryRunSize(totalToday)} cards{$best ? ` · Best: ${$best}` : ''}
+        {:else}
+          {$best ? `Best: ${$best} letters` : 'All caught up'}
+        {/if}
+      </span>
     </span>
   </a>
 </div>

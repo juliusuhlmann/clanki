@@ -52,11 +52,20 @@ export interface Setting {
   value: unknown;
 }
 
+/** A finished library run: cards plus two runner runs, scored by the letters of both runs. */
+export interface LibraryRun {
+  id?: number;
+  finishedAt: number;
+  letters: number;
+  cards: number;
+}
+
 export class ClankiDb extends Dexie {
   decks!: EntityTable<Deck, 'id'>;
   cards!: EntityTable<Card, 'id'>;
   reviews!: EntityTable<Review, 'id'>;
   settings!: EntityTable<Setting, 'key'>;
+  libraryRuns!: EntityTable<LibraryRun, 'id'>;
 
   constructor(name = 'clanki') {
     super(name);
@@ -66,10 +75,30 @@ export class ClankiDb extends Dexie {
       reviews: '++id, cardId, deckId, reviewedAt, [cardId+reviewedAt]',
       settings: 'key',
     });
+    this.version(2).stores({
+      libraryRuns: '++id, letters, finishedAt',
+    });
   }
 }
 
 export const db = new ClankiDb();
+
+/** Saves a finished library run and returns its id. */
+export async function saveLibraryRun(run: Omit<LibraryRun, 'id'>, database: ClankiDb = db): Promise<number> {
+  return (await database.libraryRuns.add(run)) as number;
+}
+
+/** Best library runs by letters; ties go to the earlier run. */
+export async function topLibraryRuns(limit = 10, database: ClankiDb = db): Promise<LibraryRun[]> {
+  const all = await database.libraryRuns.toArray();
+  return all.sort((a, b) => b.letters - a.letters || a.finishedAt - b.finishedAt).slice(0, limit);
+}
+
+/** 1-based rank of a saved library run in the same order as topLibraryRuns, and how many runs there are. */
+export async function libraryRunRank(id: number, database: ClankiDb = db): Promise<{ rank: number; of: number }> {
+  const all = await topLibraryRuns(Infinity, database);
+  return { rank: all.findIndex((r) => r.id === id) + 1, of: all.length };
+}
 
 export const DEFAULT_NEW_PER_DAY = 20;
 

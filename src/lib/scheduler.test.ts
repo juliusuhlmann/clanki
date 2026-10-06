@@ -1,6 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ClankiDb, setNewPerDay } from './db';
-import { buildQueue, formatInterval, rate, Rating, retrievability, Session, startOfStudyDay, State } from './scheduler';
+import { ClankiDb, libraryRunRank, saveLibraryRun, setNewPerDay, topLibraryRuns } from './db';
+import {
+  buildLibraryQueue,
+  buildQueue,
+  formatInterval,
+  LIBRARY_LEARN_AHEAD_MS,
+  libraryRunSize,
+  rate,
+  Rating,
+  retrievability,
+  Session,
+  splitBlocks,
+  startOfStudyDay,
+  State,
+  totalLeftToday,
+} from './scheduler';
 import { createCard, createDeck } from './store';
 
 const MINUTE = 60_000;
@@ -94,6 +108,22 @@ describe('Session', () => {
     expect(session.next(now)?.id).toBe(a.id);
     expect(session.next(now)).toBeNull();
   });
+
+  it('with the library-run window, only brings back cards answered Again', async () => {
+    const deck = await createDeck('Test', db);
+    const a = await createCard(deck.id, 'a', 'a', db);
+    const b = await createCard(deck.id, 'b', 'b', db);
+    const now = Date.now();
+    const session = new Session([a, b], LIBRARY_LEARN_AHEAD_MS);
+
+    session.next(now);
+    session.answered(await rate(a, Rating.Again, 1000, now, db), now);
+    session.next(now);
+    // Good on a new card is a 10 minute step: it waits for a later session.
+    session.answered(await rate(b, Rating.Good, 1000, now, db), now);
+    expect(session.next(now)?.id).toBe(a.id);
+    expect(session.next(now)).toBeNull();
+  });
 });
 
 describe('helpers', () => {
@@ -127,5 +157,63 @@ describe('retrievability', () => {
     expect(soon).toBeGreaterThan(0.9);
     expect(later).toBeLessThan(soon);
     expect(later).toBeGreaterThan(0);
+  });
+});
+
+describe('library runs', () => {
+  it('takes everything below 18, half from 18 to 23, and 12 from 24 on', () => {
+    expect([0, 5, 17].map(libraryRunSize)).toEqual([0, 5, 17]);
+    expect([18, 19, 23].map(libraryRunSize)).toEqual([9, 10, 12]);
+    expect([24, 40].map(libraryRunSize)).toEqual([12, 12]);
+  });
+
+  it('splits the cards into three blocks as evenly as possible', () => {
+    expect(splitBlocks(12)).toEqual([4, 4, 4]);
+    expect(splitBlocks(17)).toEqual([6, 6, 5]);
+    expect(splitBlocks(2)).toEqual([1, 1, 0]);
+  });
+
+  it('draws cards from all decks within the new-card limit and caps at 12', async () => {
+    await setNewPerDay(10, db);
+    const a = await createDeck('A', db);
+    const b = await createDeck('B', db);
+    for (let i = 0; i < 15; i++) {
+      await createCard(a.id, `a${i}`, 'x', db);
+      await createCard(b.id, `b${i}`, 'x', db);
+    }
+    const now = Date.now();
+    expect(await totalLeftToday(now, db)).toBe(20);
+
+    const queue = await buildLibraryQueue(now, db);
+    expect(queue).toHaveLength(10);
+    expect(new Set(queue.map((c) => c.id)).size).toBe(10);
+
+    await setNewPerDay(15, db);
+    const full = await buildLibraryQueue(now, db);
+    expect(full).toHaveLength(12);
+    expect(new Set(full.map((c) => c.deckId))).toEqual(new Set([a.id, b.id]));
+  });
+
+  it('puts due cards before new ones', async () => {
+    const deck = await createDeck('Test', db);
+    const now = Date.now();
+    for (let i = 0; i < 30; i++) await createCard(deck.id, `n${i}`, 'x', db);
+    // Created last, so it would be cut if it were sorted in with the new cards.
+    const old = await createCard(deck.id, 'old', 'x', db);
+    await db.cards.update(old.id, { createdAt: now + 1 });
+    await rate({ ...old, createdAt: now + 1 }, Rating.Good, 1000, now - 30 * DAY, db);
+
+    const queue = await buildLibraryQueue(now, db);
+    expect(queue.some((c) => c.id === old.id)).toBe(true);
+  });
+
+  it('ranks runs by letters, ties going to the earlier run', async () => {
+    const first = await saveLibraryRun({ finishedAt: 1, letters: 20, cards: 12 }, db);
+    await saveLibraryRun({ finishedAt: 2, letters: 35, cards: 12 }, db);
+    const tie = await saveLibraryRun({ finishedAt: 3, letters: 20, cards: 12 }, db);
+
+    expect((await topLibraryRuns(10, db)).map((r) => r.letters)).toEqual([35, 20, 20]);
+    expect(await libraryRunRank(first, db)).toEqual({ rank: 2, of: 3 });
+    expect(await libraryRunRank(tie, db)).toEqual({ rank: 3, of: 3 });
   });
 });

@@ -25,11 +25,18 @@ Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
 - Obstacles: book piles (jump or dodge), book carts (dodge), and ladders leaning across the corridor against a bookshelf: low over the middle lane (jump), high over the wall-side lane (glide under; jumping there hits it), absent over the far lane, where a book cart sometimes stands. Every row leaves a lane you can glide through without jumping, and rows are spaced so you can always react
 - Speed: starts at 17 m/s and ramps toward 42 m/s (time constant 18s). Rows are at least 0.6s apart. The first obstacles arrive about two seconds into a run; from 3s in, three more kinds: **rolling carts** drift from one lane into the next while still far away (settled by 18 m out; scuff lines show the direction); **reading tables** across 2 or 3 lanes (green leather top, banker's lamp, books) that you glide under, while any jump hits them, so arriving mid-jump means swiping down; **falling books** tip off a high shelf one by one and stack into a jumpable pile, with a shadow on the landing spot as a warning, finished by ~15 m out
 - Glowing letters are collectibles: each one adds 1 to the score, and the firefly's lantern flares briefly. They don't change speed
-- Score = letters collected in the run. The HUD shows a gold "A" and the count; the best is kept in settings (`runnerBestLetters`) and shown on the home screen's lamp
+- Score = letters collected in the run. The HUD shows a gold "A" and the count
 - 2 hearts; a hit costs a heart, flashes the screen and vibrates the phone; the run ends when time or hearts run out
-- Appears every 6–10 cards (random). Length = 15s + earned seconds (Again 0, Hard +2, Good +4, Easy +4), max 40s. A bonus run is offered at the end of a session if ≥3 cards were answered since the last run
-- Skippable, and can be turned off in Settings. The game never affects scheduling
-- "Try the library run" on the deck list (`#/run`) starts a free 30s practice run
+- Every runner run is 30s and skippable (counts 0 letters). The game never affects scheduling
+
+Library run flow (`src/screens/LibraryRun.svelte`, `#/library`, started from the lamp tile on the home screen):
+- Cards come from all decks (`buildLibraryQueue`): due cards first, then new ones within each deck's daily limit, shuffled
+- Size from the cards left today, n: all of them if n < 18, half (rounded up) if 18 ≤ n < 24, otherwise 12 (`libraryRunSize`)
+- Three blocks as even as possible (`splitBlocks`, e.g. 4/4/4) with a runner run after the first two: cards → run → cards → run → cards
+- Only cards answered "Again" come back within a library run (2-minute learn-ahead), so the blocks stay even; longer learning steps wait for a later session
+- Letters from both runs add up. Finished runs are stored in the `libraryRuns` table (not in backups); the summary shows the rank and the top 10, and the lamp shows the best
+- Studying a single deck (`Review.svelte`) has no runs, just a progress bar with the cards left
+- Settings → "Test the run" (`#/run`) starts a single 30s run that isn't recorded
 - Dev only: `window.__runner` exposes `{ game, paused }` for inspection
 
 ## Scheduling and exam mode
@@ -43,7 +50,7 @@ _TODO_
 - Serif headings (Source Serif 4, bundled for offline use), system sans for UI text, soft 1px borders
 - The firefly is the mascot: `src/components/Firefly.svelte` draws the game's firefly (same code) as a still icon for the header logo, the library-run tile and empty states. `src/components/Orb.svelte` is its glowing lantern as a sphere
 - App icon: a glowing lime sphere on a warm dark-brown tile (`public/icons/`; the PNGs are generated with System.Drawing, full-bleed so they work as maskable icons)
-- Game ties: flashcards are library catalogue cards; a run meter during review shows the glowing orb moving toward the next run, with "+4s" when an answer earns time; a dark "library run" tile on the home screen
+- Game ties: a meter with the glowing orb shows progress (toward the next run in a library run, through the deck when studying); a dark "library run" lamp tile on the home screen
 
 ## Tech stack
 

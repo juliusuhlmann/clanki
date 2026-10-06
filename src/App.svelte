@@ -4,8 +4,10 @@
   import Deck from './screens/Deck.svelte';
   import Review from './screens/Review.svelte';
   import Settings from './screens/Settings.svelte';
+  import LibraryRun from './screens/LibraryRun.svelte';
   import RunnerGame from './components/RunnerGame.svelte';
   import Firefly from './components/Firefly.svelte';
+  import { RUN_SECONDS } from './game/reward';
 
   let online = $state(navigator.onLine);
   const home = $derived(router.route.name === 'decks');
@@ -48,7 +50,10 @@
     {/key}
   {:else if router.route.name === 'settings'}
     <Settings />
+  {:else if router.route.name === 'libraryRun'}
+    <LibraryRun />
   {:else if router.route.name === 'practiceRun'}
-    <RunnerGame seconds={30} practice onfinish={() => navigate({ name: 'decks' })} />
+    <!-- Back to wherever the test run was started (Settings or an empty library run). -->
+    <RunnerGame seconds={RUN_SECONDS} onfinish={() => (history.length > 1 ? history.back() : navigate({ name: 'decks' }))} />
   {/if}
 </main>

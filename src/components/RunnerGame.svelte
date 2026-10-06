@@ -3,24 +3,24 @@
   import { Game } from '../game/engine';
   import { Renderer } from '../game/render';
   import { InputController } from '../game/input';
-  import { getSetting, setSetting } from '../lib/db';
 
   let {
     seconds,
-    practice = false,
+    lettersBefore = null,
+    buttonLabel = 'Done',
     onfinish,
   }: {
     /** Length of the run. */
     seconds: number;
-    /** A free run started from the deck list rather than earned by studying. */
-    practice?: boolean;
-    onfinish: () => void;
+    /** Letters from earlier runs of the same library run; null for a test run. */
+    lettersBefore?: number | null;
+    buttonLabel?: string;
+    /** Called with this run's letters (0 if skipped). */
+    onfinish: (letters: number) => void;
   } = $props();
 
   let phase = $state<'intro' | 'playing' | 'results'>('intro');
   let score = $state(0);
-  let best = $state(0);
-  let newBest = $state(false);
   let endReason = $state<'time' | 'hearts' | null>(null);
 
   let container: HTMLDivElement;
@@ -36,7 +36,6 @@
   onMount(() => {
     game = new Game();
     const renderer = new Renderer(canvas);
-    getSetting('runnerBestLetters', 0).then((v) => (best = v));
 
     const resize = () => {
       const rect = container.getBoundingClientRect();
@@ -95,16 +94,11 @@
     phase = 'playing';
   }
 
-  async function finish(reason: 'time' | 'hearts') {
+  function finish(reason: 'time' | 'hearts') {
     input?.destroy();
     input = null;
     endReason = reason;
     score = game.score;
-    if (score > best) {
-      newBest = best > 0;
-      best = score;
-      await setSetting('runnerBestLetters', score);
-    }
     resultsAt = performance.now();
     phase = 'results';
   }
@@ -116,7 +110,7 @@
     } else if (phase === 'results' && e.key === 'Enter' && performance.now() - resultsAt > 700) {
       // Only Enter (not Space, which is also jump) and not right after the run ends.
       e.preventDefault();
-      onfinish();
+      onfinish(score);
     }
   }
 </script>
@@ -130,7 +124,7 @@
     <!-- Just "Ready?" over the corridor: tap it to fly, or skip. The controls hint shows in-game. -->
     <div class="overlay ready">
       <button class="ready-btn" onclick={start}>Ready?</button>
-      <button class="skip-btn" onclick={onfinish}>Skip</button>
+      <button class="skip-btn" onclick={() => onfinish(0)}>Skip</button>
     </div>
   {:else if phase === 'results'}
     <div class="overlay">
@@ -138,9 +132,11 @@
         <p class="kicker">{endReason === 'hearts' ? 'Out of hearts' : "Time's up"}</p>
         <h2>{score}</h2>
         <p class="muted small">{score === 1 ? 'letter' : 'letters'} collected</p>
-        <p class="best">{newBest ? '✦ New best!' : `Best: ${best}`}</p>
+        {#if lettersBefore !== null}
+          <p class="best">{lettersBefore + score} letters this library run</p>
+        {/if}
         <div class="buttons">
-          <button class="btn primary big" onclick={onfinish}>{practice ? 'Done' : 'Back to cards'}</button>
+          <button class="btn primary big" onclick={() => onfinish(score)}>{buttonLabel}</button>
         </div>
       </div>
     </div>

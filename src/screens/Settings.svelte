@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getNewPerDay, setNewPerDay, getSetting, setSetting } from '../lib/db';
+  import { getNewPerDay, setNewPerDay } from '../lib/db';
+  import { RUN_SECONDS } from '../game/reward';
   import { exportData, backupFileName, parseBackup, planImport, applyImport, type ImportPlan } from '../lib/backup';
   import { href } from '../lib/router.svelte';
 
@@ -12,11 +13,8 @@
   let importDone = $state('');
   let fileInput: HTMLInputElement | undefined = $state();
 
-  let gamesEnabled = $state(true);
-
   onMount(async () => {
     newPerDay = await getNewPerDay();
-    gamesEnabled = await getSetting('gamesEnabled', true);
     persisted = (await navigator.storage?.persisted?.()) ?? null;
   });
 
@@ -83,18 +81,17 @@
     </span>
     <input type="number" min="0" max="999" inputmode="numeric" bind:value={newPerDay} onchange={saveNewPerDay} />
   </label>
-  <label class="setting">
+</section>
+
+<p class="section-label">Library run</p>
+<section class="panel settings-group">
+  <div class="setting">
     <span class="label">
-      Library runs
-      <span class="hint">A short run through the library every 6–10 cards.</span>
+      Test the run
+      <span class="hint">One {RUN_SECONDS}s run through the library, no cards. Doesn't count toward your best runs.</span>
     </span>
-    <input
-      type="checkbox"
-      class="switch"
-      bind:checked={gamesEnabled}
-      onchange={() => setSetting('gamesEnabled', gamesEnabled)}
-    />
-  </label>
+    <a class="btn small" href={href({ name: 'practiceRun' })}>Start</a>
+  </div>
 </section>
 
 <p class="section-label">Backup</p>

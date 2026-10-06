@@ -822,7 +822,7 @@ input[type='search'] {
   margin: 0;
 }
 
-/* Run meter: the spark travels toward the next library run */
+/* Run meter: the orb travels toward the next runner run (library run) or the end of the deck (study) */
 .run-meter {
   flex: 1;
   min-width: 0;
@@ -857,31 +857,6 @@ input[type='search'] {
   margin-top: 0.35rem;
   font-size: 0.75rem;
   color: var(--faint);
-}
-
-.earned-toast {
-  position: absolute;
-  right: 0;
-  top: -1.6rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--accent);
-  animation: rise 1s ease-out forwards;
-  pointer-events: none;
-}
-
-@keyframes rise {
-  0% {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  20% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
 }
 
 /* The flashcard: a plain card, no rules or accent colour */
@@ -1007,6 +982,59 @@ input[type='search'] {
   gap: 0.5rem;
   width: min(100%, 18rem);
   margin-top: 1rem;
+}
+
+/* End of a library run: total letters and the best runs so far */
+.library-summary .kicker {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.library-summary h1 {
+  margin: 0;
+}
+
+.leaderboard {
+  width: min(100%, 18rem);
+  margin: 1rem 0 0;
+  padding: 0.35rem 0;
+  list-style: none;
+  text-align: left;
+}
+
+.leaderboard li {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.95rem;
+}
+
+.leaderboard li.current {
+  font-weight: 650;
+  background: var(--surface-2);
+}
+
+.leaderboard .place {
+  width: 1.5rem;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard .when {
+  flex: 1;
+  color: var(--muted);
+}
+
+.leaderboard li.current .when {
+  color: var(--text);
+}
+
+.leaderboard .score {
+  font-variant-numeric: tabular-nums;
 }
 
 .spark {

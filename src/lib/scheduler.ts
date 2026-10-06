@@ -148,7 +148,11 @@ export class Session {
   private queue: Card[];
   private learning: Card[] = [];
 
-  constructor(queue: Card[]) {
+  /** @param learnAheadMs cards due again within this window come back in the same session. */
+  constructor(
+    queue: Card[],
+    private learnAheadMs = LEARN_AHEAD_MS,
+  ) {
     this.queue = [...queue];
   }
 
@@ -166,6 +170,55 @@ export class Session {
 
   /** Call after rating a card; keeps it in the session if it is due again soon. */
   answered(updated: Card, now: number): void {
-    if (updated.due <= now + LEARN_AHEAD_MS) this.learning.push(updated);
+    if (updated.due <= now + this.learnAheadMs) this.learning.push(updated);
   }
+}
+
+/**
+ * In a library run only "Again" cards (1 minute step) come back; cards in longer
+ * learning steps wait for a later library run, so the three blocks stay even.
+ */
+export const LIBRARY_LEARN_AHEAD_MS = 2 * 60 * 1000;
+
+/** Cards in one library run, given how many are left today across all decks. */
+export function libraryRunSize(left: number): number {
+  if (left < 18) return left;
+  if (left < 24) return Math.ceil(left / 2);
+  return 12;
+}
+
+/** Splits a library run's cards into three blocks, as even as possible (17 → 6, 6, 5). */
+export function splitBlocks(total: number): [number, number, number] {
+  const base = Math.floor(total / 3);
+  const extra = total % 3;
+  return [base + (extra > 0 ? 1 : 0), base + (extra > 1 ? 1 : 0), base];
+}
+
+/** Cards left to study today across all decks (due plus new within each deck's limit). */
+export async function totalLeftToday(now: number, database: ClankiDb = defaultDb): Promise<number> {
+  const decks = await database.decks.toArray();
+  const counts = await Promise.all(decks.map((d) => deckCounts(d.id, now, database)));
+  return counts.reduce((sum, c) => sum + c.due + c.new, 0);
+}
+
+/**
+ * The cards for one library run, drawn from all decks: due cards (oldest first),
+ * then new cards, cut to libraryRunSize and shuffled so the decks mix.
+ */
+export async function buildLibraryQueue(
+  now: number,
+  database: ClankiDb = defaultDb,
+  rng: () => number = Math.random,
+): Promise<Card[]> {
+  const decks = await database.decks.toArray();
+  const queues = await Promise.all(decks.map((d) => buildQueue(d.id, now, database)));
+  const all = queues.flat();
+  const due = all.filter((c) => c.fsrs.state !== State.New).sort((a, b) => a.due - b.due);
+  const fresh = all.filter((c) => c.fsrs.state === State.New).sort((a, b) => a.createdAt - b.createdAt);
+  const picked = [...due, ...fresh].slice(0, libraryRunSize(all.length));
+  for (let i = picked.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [picked[i], picked[j]] = [picked[j], picked[i]];
+  }
+  return picked;
 }

@@ -5,12 +5,15 @@ export type Route =
   | { name: 'deck'; deckId: string }
   | { name: 'review'; deckId: string }
   | { name: 'settings' }
-  /** A practice run of the runner game, outside a study session. */
+  /** Cards from all decks with two runner runs in between. */
+  | { name: 'libraryRun' }
+  /** A test run of the runner game on its own. */
   | { name: 'practiceRun' };
 
 function parse(hash: string): Route {
   const [, screen, id] = hash.replace(/^#/, '').split('/');
   if (screen === 'run') return { name: 'practiceRun' };
+  if (screen === 'library') return { name: 'libraryRun' };
   if (screen === 'deck' && id) return { name: 'deck', deckId: decodeURIComponent(id) };
   if (screen === 'review' && id) return { name: 'review', deckId: decodeURIComponent(id) };
   if (screen === 'settings') return { name: 'settings' };
@@ -33,6 +36,8 @@ export function href(route: Route): string {
       return `#/review/${encodeURIComponent(route.deckId)}`;
     case 'settings':
       return '#/settings';
+    case 'libraryRun':
+      return '#/library';
     case 'practiceRun':
       return '#/run';
   }
