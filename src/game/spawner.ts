@@ -196,8 +196,11 @@ export class Spawner {
     let extra = 0;
 
     if (pattern === 'pile') {
+      // A pile (with letters arcing over it) never stands alone: a cart or another pile
+      // blocks a second lane.
       const lane = this.pick(lanes);
-      obstacles = [this.pile(lane)];
+      const other = this.pick(lanes.filter((l) => l !== lane));
+      obstacles = [this.pile(lane), this.rng() < 0.6 ? this.cart(other) : this.pile(other)];
       if (this.rng() < 0.6) letters = this.letterArc(lane);
     } else if (pattern === 'pair') {
       const free = this.pick(lanes);
@@ -238,7 +241,7 @@ export class Spawner {
       const lane = this.pick(lanes);
       const side: -1 | 1 = lane === 0 ? -1 : lane === 2 ? 1 : this.rng() < 0.5 ? -1 : 1;
       obstacles = [{ ...this.pile(lane), kind: 'books', side }];
-      if (this.rng() < 0.4) obstacles.push(this.cart(this.pick(lanes.filter((l) => l !== lane))));
+      obstacles.push(this.cart(this.pick(lanes.filter((l) => l !== lane))));
     } else {
       letters = this.letterLine(this.pick(lanes), 5);
       extra = 5 * LETTER_SPACING;

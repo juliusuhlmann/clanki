@@ -29,11 +29,11 @@ describe('Spawner', () => {
     }
   });
 
-  it('never puts a book cart alone in a row', () => {
+  it('never puts a book cart or a book pile alone in a row', () => {
     const spawner = new Spawner(createRng(17));
     for (let i = 0; i < 3000; i++) {
       const row = spawner.next(12 + (i % 10));
-      if (row.obstacles.some((o) => o.kind === 'cart' || o.kind === 'rollingCart')) {
+      if (row.obstacles.some((o) => ['cart', 'rollingCart', 'pile', 'books'].includes(o.kind))) {
         expect(row.obstacles.length).toBeGreaterThan(1);
       }
     }
