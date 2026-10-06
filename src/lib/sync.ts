@@ -1,4 +1,13 @@
-import { MAX_PUSH, wins, type SyncRecord, type SyncRequest, type SyncResponse } from '../../sync/src/protocol';
+import {
+  MAX_BATCH_BYTES,
+  MAX_PUSH,
+  MAX_RECORD_BYTES,
+  recordBytes,
+  wins,
+  type SyncRecord,
+  type SyncRequest,
+  type SyncResponse,
+} from '../../sync/src/protocol';
 import { isCard, isDeck, isReview } from './backup';
 import { db as defaultDb, getSetting, reviewSyncId, setSetting, type ClankiDb, type Deletion, type LibraryRun } from './db';
 
@@ -114,13 +123,16 @@ export async function applyRemote(changes: SyncRecord[], database: ClankiDb = de
  */
 export async function syncOnce(transport: Transport, database: ClankiDb = defaultDb): Promise<{ pushed: number; pulled: number }> {
   const startedAt = Date.now();
-  const changes = await localChanges(await getSetting<number>(PUSHED_THROUGH, 0, database), database);
+  // Records too big for the server (huge embedded images) are skipped; Settings shows how many.
+  const changes = (await localChanges(await getSetting<number>(PUSHED_THROUGH, 0, database), database)).filter(
+    (c) => recordBytes(c) <= MAX_RECORD_BYTES,
+  );
   let cursor = await getSetting<number>(CURSOR, 0, database);
   let pulled = 0;
   let sent = 0;
   let more = false;
   do {
-    const chunk = changes.slice(sent, sent + MAX_PUSH);
+    const chunk = nextBatch(changes, sent);
     const res = await transport({ since: cursor, changes: chunk });
     sent += chunk.length;
     pulled += await applyRemote(res.changes, database);
@@ -138,9 +150,28 @@ export async function syncOnce(transport: Transport, database: ClankiDb = defaul
   return { pushed: changes.length, pulled };
 }
 
+/** The next request's changes from `start` on: at most MAX_PUSH records and about MAX_BATCH_BYTES. */
+function nextBatch(changes: SyncRecord[], start: number): SyncRecord[] {
+  let bytes = 0;
+  let end = start;
+  while (end < changes.length && end - start < MAX_PUSH) {
+    bytes += recordBytes(changes[end]);
+    if (end > start && bytes > MAX_BATCH_BYTES) break;
+    end++;
+  }
+  return changes.slice(start, end);
+}
+
+/** Cards too big to sync (over ~1.9 MB, i.e. huge embedded images); they stay on this device only. */
+export async function tooLargeCount(database: ClankiDb = defaultDb): Promise<number> {
+  const cards = await database.cards.toArray();
+  return cards.filter((c) => recordBytes({ kind: 'card', id: c.id, updatedAt: c.updatedAt, deleted: false, data: c }) > MAX_RECORD_BYTES).length;
+}
+
 /** Changes on this device that haven't reached the server yet. */
 export async function pendingCount(database: ClankiDb = defaultDb): Promise<number> {
-  return (await localChanges(await getSetting<number>(PUSHED_THROUGH, 0, database), database)).length;
+  const changes = await localChanges(await getSetting<number>(PUSHED_THROUGH, 0, database), database);
+  return changes.filter((c) => recordBytes(c) <= MAX_RECORD_BYTES).length;
 }
 
 /** Links this device: from now on it syncs with this key, starting with everything it has. */

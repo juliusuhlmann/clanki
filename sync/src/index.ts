@@ -2,7 +2,7 @@
 // Each request pushes the device's changes (the newer updatedAt wins) and returns everything
 // changed since the device's cursor. Protected by a single shared key (secret SYNC_KEY).
 
-import { PAGE_SIZE, parseRequest, type SyncRecord, type SyncResponse } from './protocol';
+import { PAGE_SIZE, parseRequest, takePage, type SyncRecord, type SyncResponse } from './protocol';
 
 // The few D1 types used here, so the worker needs no extra type packages.
 interface D1Statement {
@@ -83,7 +83,7 @@ async function sync(env: Env, body: unknown): Promise<SyncResponse> {
   )
     .bind(req.since, PAGE_SIZE + 1)
     .all<Row>();
-  const page = results.slice(0, PAGE_SIZE);
+  const { page, more } = takePage(results, (r) => (r.data?.length ?? 0) + r.id.length + 80);
   return {
     cursor: page.length ? page[page.length - 1].seq : req.since,
     changes: page.map(
@@ -95,7 +95,7 @@ async function sync(env: Env, body: unknown): Promise<SyncResponse> {
         data: r.data === null ? null : JSON.parse(r.data),
       }),
     ),
-    more: results.length > PAGE_SIZE,
+    more,
   };
 }
 

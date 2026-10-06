@@ -160,6 +160,12 @@
           {:else}
             Not synced yet.
           {/if}
+          {#if syncStatus.tooLarge}
+            <span class="error">
+              {syncStatus.tooLarge} card{syncStatus.tooLarge === 1 ? ' is' : 's are'} too big to sync (images over ~1.9 MB)
+              and stay{syncStatus.tooLarge === 1 ? 's' : ''} on this device only.
+            </span>
+          {/if}
         </span>
       </span>
       <button class="btn small" onclick={() => syncNow()} disabled={syncStatus.syncing || !online}>Sync now</button>

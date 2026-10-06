@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { MemoryServer, parseRequest, wins } from '../../sync/src/protocol';
+import { MAX_BATCH_BYTES, MemoryServer, parseRequest, wins } from '../../sync/src/protocol';
 import { ClankiDb, saveLibraryRun } from './db';
 import { applyRepoDeck } from './repoDecks';
 import { rate, Rating } from './scheduler';
 import { createCard, createDeck, deleteCard, deleteDeck, updateCard } from './store';
-import { link, pendingCount, syncOnce, type Transport } from './sync';
+import { link, pendingCount, syncOnce, tooLargeCount, type Transport } from './sync';
 
 let server: MemoryServer;
 let phone: ClankiDb;
@@ -173,6 +173,29 @@ describe('sync', () => {
     await tick();
     expect(await pendingCount(phone)).toBe(0);
     expect(await pendingCount(laptop)).toBe(0);
+  });
+
+  it('syncs cards with big embedded images in several requests, and skips ones too big to sync', async () => {
+    const deck = await createDeck('Images', phone);
+    const image = (bytes: number) => `![graph](data:image/png;base64,${'A'.repeat(bytes)})`;
+    // Each about 1.2 MB: three don't fit in one request.
+    const big = [];
+    for (let i = 0; i < 3; i++) big.push(await createCard(deck.id, `Q${i}`, image(1_200_000), phone));
+    const huge = await createCard(deck.id, 'too big', image(2_500_000), phone);
+    const small = await createCard(deck.id, 'small', 'A', phone);
+
+    const requests: number[] = [];
+    transport = async (req) => {
+      requests.push(JSON.stringify(req).length);
+      return server.handle(req);
+    };
+    await syncBoth();
+
+    expect(Math.max(...requests)).toBeLessThan(MAX_BATCH_BYTES);
+    for (const c of [...big, small]) expect((await laptop.cards.get(c.id))?.back).toBe(c.back);
+    expect(await laptop.cards.get(huge.id)).toBeUndefined();
+    expect(await tooLargeCount(phone)).toBe(1);
+    expect(await pendingCount(phone)).toBe(0);
   });
 
   it('does nothing harmful when synced again and again', async () => {

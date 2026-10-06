@@ -1,7 +1,7 @@
 import Dexie from 'dexie';
 import { db, getSetting } from './db';
 import { syncRepoDecks } from './repoDecks';
-import { httpTransport, KEY_SETTING, LAST_SYNC, pendingCount, SyncError, syncOnce } from './sync';
+import { httpTransport, KEY_SETTING, LAST_SYNC, pendingCount, SyncError, syncOnce, tooLargeCount } from './sync';
 
 // Runs sync in the app: when it starts, when the device comes online or back to the foreground,
 // and a few seconds after cards are studied or changed. Status is shown in Settings.
@@ -14,6 +14,8 @@ export const syncStatus = $state({
   syncing: false,
   lastAt: 0,
   pending: 0,
+  /** Cards too big to sync (huge embedded images). */
+  tooLarge: 0,
   error: '',
 });
 
@@ -61,6 +63,7 @@ export async function refreshStatus(): Promise<void> {
   syncStatus.linked = (await getSetting(KEY_SETTING, '')) !== '';
   syncStatus.lastAt = await getSetting<number>(LAST_SYNC, 0);
   syncStatus.pending = syncStatus.linked ? await pendingCount() : 0;
+  syncStatus.tooLarge = syncStatus.linked ? await tooLargeCount() : 0;
 }
 
 const SYNCED_TABLES = ['decks', 'cards', 'reviews', 'libraryRuns', 'deletions'];
