@@ -1,4 +1,4 @@
-# Clanki
+﻿# Clanki
 
 Clanki (Claude + Anki) is a spaced-repetition flashcard app with a small three-lane runner game between cards. It runs offline on a Windows laptop and an Android phone.
 
@@ -8,10 +8,10 @@ _TODO_
 
 ## Core features
 
-Done (steps 2–3):
+Done (steps 2â€“3):
 - Decks: create, rename, delete; deck list shows due / new counts
 - Cards: add, edit, delete, search (plain multi-line text)
-- Review: show answer → Again / Hard / Good / Easy with interval previews; keyboard shortcuts (Space, 1–4)
+- Review: show answer â†’ Again / Hard / Good / Easy with interval previews; keyboard shortcuts (Space, 1â€“4)
 - FSRS scheduling (ts-fsrs, 90% target retention, fuzz on); cards in learning steps return in the same session (20-minute learn-ahead)
 - Daily new-card limit per deck (default 20); the study day starts at 4:00
 - Hash routing, so Android's back button moves between screens
@@ -19,14 +19,14 @@ Done (steps 2–3):
 ## The game
 
 Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
-- A little firefly (`src/game/firefly.ts`) flies down a dim three-lane library corridor (pseudo-3D, plain canvas 2D, no image assets). Deliberately simple, seen from behind, no face: flat shapes, a round brown body whose belly is the glowing lantern, a round head, two buzzing translucent wings and antennae with glowing tips
+- A little firefly (`src/game/firefly.ts`) flies down a dim three-lane library corridor (pseudo-3D, plain canvas 2D, no image assets). Deliberately simple, seen from behind, no face: flat shapes, a round body that is almost all glowing lantern (a thin brown band under the head), a round head, two buzzing translucent wings and antennae with glowing tips
 - Its lantern lights the scene: a warm pool on the floor ahead, a glow on the nearby bookshelf, obstacles tinted as they come close, and darkness closing in away from it. The light breathes slowly and flares on a letter boost; it leaves a trail of twinkling motes
-- Controls: swipe left/right (or ←/→, A/D) to change lane; swipe up, tap, ↑/W or Space to jump
+- Controls: swipe left/right (or â†/â†’, A/D) to change lane; swipe up, tap, â†‘/W or Space to jump
 - Obstacles: book piles (jump or dodge), book carts (dodge), and ladders leaning across the corridor against a bookshelf: low over the middle lane (jump), high over the wall-side lane (glide under; jumping there hits it), absent over the far lane, where a book cart sometimes stands. Every row stays passable and rows are spaced so you can always react
 - Glowing letters are speed boosts, not collectibles: +20% speed fading out over 3s (smoothstep); another letter refills rather than stacks, so top speed stays fair (~0.65s reaction time minimum). Speed lines show while boosted
 - Score = distance only (so boosts raise it); best score kept in settings
 - 3 hearts; a hit costs a heart, flashes the screen and vibrates the phone; the run ends when time or hearts run out
-- Appears every 6–10 cards (random). Length = 15s + earned seconds (Again 0, Hard +2, Good +4, Easy +4), max 40s. A bonus run is offered at the end of a session if ≥3 cards were answered since the last run
+- Appears every 6â€“10 cards (random). Length = 15s + earned seconds (Again 0, Hard +2, Good +4, Easy +4), max 40s. A bonus run is offered at the end of a session if â‰¥3 cards were answered since the last run
 - Skippable, and can be turned off in Settings. The game never affects scheduling
 - "Try the library run" on the deck list (`#/run`) starts a free 30s practice run
 - Dev only: `window.__runner` exposes `{ game, paused }` for inspection
@@ -57,7 +57,7 @@ _TODO_
 ## Data and sync
 
 - Everything is stored on the device in IndexedDB (Dexie), in `src/lib/db.ts`: tables `decks`, `cards` (FSRS state + indexed `due`), `reviews` (an append-only log of every answer, for future exam mode, stats and the leech boss) and `settings`
-- Backup: Settings → Export downloads `clanki-backup-YYYY-MM-DD.json`; Import merges it (new items added, the newer `updatedAt` wins, reviews deduplicated) after showing a summary
+- Backup: Settings â†’ Export downloads `clanki-backup-YYYY-MM-DD.json`; Import merges it (new items added, the newer `updatedAt` wins, reviews deduplicated) after showing a summary
 - Moving cards between laptop and phone currently means export on one device and import on the other
 - Known limitation: deletions don't sync. Importing an older backup brings deleted cards back
 
@@ -81,7 +81,7 @@ _TODO_
 6. **Polish and extras**
    Add the leech boss, power-ups, deck worlds, stats (retention, streaks), and optional sync (OneDrive backup or Supabase).
 
-Each step leaves something usable; steps 1–3 alone give a working flashcard app.
+Each step leaves something usable; steps 1â€“3 alone give a working flashcard app.
 
 ## Open questions
 

@@ -93,24 +93,25 @@ export function drawFirefly(ctx: CanvasRenderingContext2D, x: number, y: number,
   // The belly lantern: the lower part of the body, lit.
   ctx.save();
   ctx.clip(BODY);
-  const light = ctx.createRadialGradient(0, 0.4, 0, 0, 0.3, 0.62);
+  // Most of the body glows; only a dark cap remains at the top, under the head.
+  const light = ctx.createRadialGradient(0, 0.25, 0, 0, 0.15, 0.68);
   light.addColorStop(0, '#fffef0');
   light.addColorStop(0.6, Math.min(1.25, glow) > 1.05 ? '#fffbd0' : '#f8f4a4');
   light.addColorStop(1, '#d8ea72');
   ctx.fillStyle = light;
   ctx.beginPath();
-  ctx.ellipse(0, 0.32, 0.7, 0.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0.32, 0.8, 0.74, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
   // Glow on the belly and the antenna tips.
   ctx.globalCompositeOperation = 'lighter';
-  const bloom = ctx.createRadialGradient(0, 0.3, 0, 0, 0.3, 0.6);
+  const bloom = ctx.createRadialGradient(0, 0.18, 0, 0, 0.18, 0.7);
   bloom.addColorStop(0, `rgba(255,255,220,${0.3 * glow * alpha})`);
   bloom.addColorStop(1, 'rgba(255,255,220,0)');
   ctx.fillStyle = bloom;
   ctx.beginPath();
-  ctx.arc(0, 0.3, 0.6, 0, Math.PI * 2);
+  ctx.arc(0, 0.18, 0.7, 0, Math.PI * 2);
   ctx.fill();
   for (const [tx, ty] of tips) {
     const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, 0.18);
