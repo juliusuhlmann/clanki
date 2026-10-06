@@ -231,7 +231,7 @@ p {
 
 /* Give the greeting some breathing room from the top of the screen. */
 .content.home {
-  padding-top: calc(3.5rem + env(safe-area-inset-top));
+  padding-top: calc(6rem + env(safe-area-inset-top));
 }
 
 .row {
