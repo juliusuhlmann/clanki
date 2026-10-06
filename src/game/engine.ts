@@ -15,6 +15,7 @@ const SPARK_HALF_DEPTH = 0.25;
 
 const JUMP_VELOCITY = 6.2;
 const GRAVITY = 17;
+const DROP_VELOCITY = 12;
 const LANE_SWITCH_RATE = 16;
 
 const START_SPEED = 11;
@@ -31,7 +32,7 @@ export const BOOST_SECONDS = 3;
 /** Half thickness of a ladder rail, for collisions. */
 const LADDER_HALF_THICKNESS = 0.06;
 
-export type Action = 'left' | 'right' | 'jump';
+export type Action = 'left' | 'right' | 'jump' | 'down';
 export type Mode = 'attract' | 'run' | 'over';
 export type EndReason = 'time' | 'hearts';
 
@@ -126,6 +127,8 @@ export class Game {
     if (action === 'left') this.lane = Math.max(0, this.lane - 1);
     else if (action === 'right') this.lane = Math.min(2, this.lane + 1);
     else if (action === 'jump' && this.onGround) this.vy = JUMP_VELOCITY;
+    // Drop straight back down mid-jump (gravity alone takes ~0.7s for a full jump).
+    else if (action === 'down' && !this.onGround) this.vy = Math.min(this.vy, -DROP_VELOCITY);
   }
 
   update(dt: number, actions: Action[] = []): GameEvent[] {

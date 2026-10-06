@@ -59,6 +59,16 @@ describe('Game', () => {
     expect(game.hearts).toBe(3);
   });
 
+  it('down drops back to the ground quickly mid-jump, and does nothing on the ground', () => {
+    const game = emptyGame();
+    simulate(game, 0.1, { 0: 'jump' });
+    expect(game.jumpY).toBeGreaterThan(0.3);
+    simulate(game, 0.15, { 0: 'down' });
+    expect(game.onGround).toBe(true);
+    simulate(game, 0.1, { 0: 'down' });
+    expect(game.jumpY).toBe(0);
+  });
+
   it('jumping does not clear a cart, but changing lanes does', () => {
     const jumper = emptyGame();
     addObstacle(jumper, 'cart', 1, 5);

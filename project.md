@@ -21,7 +21,7 @@ Done (steps 2–3):
 Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
 - A little firefly (`src/game/firefly.ts`) flies down a dim three-lane library corridor (pseudo-3D, plain canvas 2D, no image assets). Deliberately simple, seen from behind, no face: flat shapes, a round body that is almost all glowing lantern (a thin brown band under the head), a round head, two buzzing translucent wings and antennae with glowing tips
 - Its lantern lights the scene: a warm pool on the floor ahead, a glow on the nearby bookshelf, obstacles tinted as they come close, and darkness closing in away from it. The light breathes slowly and flares on a letter boost; it leaves a trail of twinkling motes
-- Controls: swipe left/right (or ←/→, A/D) to change lane; swipe up, tap, ↑/W or Space to jump
+- Controls: swipe left/right (or ←/→, A/D) to change lane; swipe up, tap, ↑/W or Space to jump; swipe down (or ↓/S) mid-jump to drop straight back down
 - Obstacles: book piles (jump or dodge), book carts (dodge), and ladders leaning across the corridor against a bookshelf: low over the middle lane (jump), high over the wall-side lane (glide under; jumping there hits it), absent over the far lane, where a book cart sometimes stands. Every row stays passable and rows are spaced so you can always react
 - Glowing letters are speed boosts, not collectibles: +20% speed fading out over 3s (smoothstep); another letter refills rather than stacks, so top speed stays fair (~0.65s reaction time minimum). Speed lines show while boosted
 - Score = distance only (so boosts raise it); best score kept in settings

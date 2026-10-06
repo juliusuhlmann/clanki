@@ -44,7 +44,7 @@ export class InputController {
     if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_MIN_PX) return;
     this.swiped = true;
     if (Math.abs(dx) > Math.abs(dy)) this.queue.push(dx < 0 ? 'left' : 'right');
-    else if (dy < 0) this.queue.push('jump');
+    else this.queue.push(dy < 0 ? 'jump' : 'down');
   };
 
   private onUp = (e: PointerEvent) => {
@@ -69,6 +69,9 @@ export class InputController {
       w: 'jump',
       W: 'jump',
       ' ': 'jump',
+      ArrowDown: 'down',
+      s: 'down',
+      S: 'down',
     };
     const action = map[e.key];
     if (action && !e.repeat) {
