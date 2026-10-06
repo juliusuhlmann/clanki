@@ -7,7 +7,7 @@ import { httpTransport, KEY_SETTING, LAST_SYNC, pendingCount, SyncError, syncOnc
 // and a few seconds after cards are studied or changed. Status is shown in Settings.
 
 /** The sync worker (sync/, deployed to Cloudflare); VITE_SYNC_URL points a dev build at a local one. */
-export const SYNC_URL: string = import.meta.env.VITE_SYNC_URL ?? 'https://clanki-sync.example.workers.dev/sync';
+export const SYNC_URL: string = import.meta.env.VITE_SYNC_URL ?? 'https://clanki-sync.juliusuhlmann.workers.dev/sync';
 
 export const syncStatus = $state({
   linked: false,

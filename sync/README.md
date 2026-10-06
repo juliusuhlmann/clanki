@@ -16,7 +16,7 @@ npx wrangler@4 login
 npx wrangler@4 d1 create clanki-sync              # put the database_id into wrangler.toml
 npx wrangler@4 d1 execute clanki-sync --remote --file schema.sql
 npx wrangler@4 secret put SYNC_KEY                 # a long random key; the same key links each device
-npx wrangler@4 deploy                              # prints the URL; SYNC_URL in src/lib/syncRunner.svelte.ts
+npx wrangler@4 deploy                              # https://clanki-sync.juliusuhlmann.workers.dev (SYNC_URL in src/lib/syncRunner.svelte.ts)
 ```
 
 ## Local testing

@@ -7,4 +7,4 @@ compatibility_date = "2026-10-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "clanki-sync"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "33a9a8bb-fa2d-4c6c-bfb7-5db0457d708a"
