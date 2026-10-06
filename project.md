@@ -59,6 +59,7 @@ Normal scheduling: FSRS (ts-fsrs, `src/lib/fsrs.ts` + `scheduler.ts`) aiming for
 **Exam mode** (`src/lib/exam.ts`): a deck can get an exam date (date only; recall is predicted for 8:00 that day). While the exam is ahead, FSRS still models memory (stability, recall over time) but the due dates follow these rules:
 - **Target 95%** recall for every card on exam day
 - **Floor**: a card may drop to 80% before a review, rising linearly to 90% over the 30 days before the final window: fewer, more effective reviews early on
+- **Spreading**: before the final window a review may move up to 2 days earlier (`SPREAD_DAYS`) to the least busy day, never later. In the simulation this cuts the busiest day from 25 to 17 answers (60 to 20 for the bump before the final window at 20 new cards a day) with the same total; a 4-day spread gained little and pushed recall towards the 95% edge
 - **Already safe**: a card predicted at ≥95% on exam day without another review isn't shown again before the exam
 - **Final pass** (8 to 2 days before the exam): each card that wouldn't make 95% on its own gets its last review as late as safe, on a day where a "Good" answer brings it to ≥95%, choosing the least busy day so the window's work is spread out
 - **Day before the exam** stays free (time for old exams and exercise sheets), except for cards answered wrongly late on
@@ -66,7 +67,7 @@ Normal scheduling: FSRS (ts-fsrs, `src/lib/fsrs.ts` + `scheduler.ts`) aiming for
 - **Daily time** for all exam decks together (Settings, default 40 min, using your median answer time from the review log): a warning on the deck when the next two weeks' busiest day needs more; nothing is skipped
 - Setting, changing or removing the date re-plans the deck's reviewed cards (`setExamDate`); after the exam the deck is back to normal scheduling
 - The deck shows "If you stopped now: X% on exam day" (average predicted recall, new cards as 0)
-- `exam.test.ts` simulates a 45-day semester answering everything due with Good: every card ends ≥95% (98% in practice) with the same number of answers plain FSRS needs for a ~91% minimum, everything is learned 10 days ahead, and the day before the exam is free
+- `exam.test.ts` simulates a 45-day semester answering everything due with Good: every card ends ≥95% (96% in practice) with the same number of answers plain FSRS needs for a ~91% minimum, everything is learned 10 days ahead, no day needs more than twice the average, and the day before the exam is free
 
 ## Design
 

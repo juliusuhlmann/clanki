@@ -11,6 +11,7 @@ import {
   planExamDue,
   recallAt,
   recallIfStoppedNow,
+  SPREAD_DAYS,
   TARGET,
   type DayLoad,
 } from './exam';
@@ -66,6 +67,25 @@ describe('exam rules', () => {
     expect(day).toBeGreaterThan(10);
     expect(recallAt(card, due)).toBeGreaterThanOrEqual(floorAt(due, exam) - 1e-9);
     expect(recallAt(card, studyDayStart(now, day + 1))).toBeLessThan(floorAt(studyDayStart(now, day + 1), exam));
+  });
+
+  it('moves a review up to two days earlier to a quieter day, never later', () => {
+    const exam = examMoment(dateIn(now, 120));
+    const card = reviewed(10, now);
+    const floorDay = daysUntil(now, planExamDue(card, exam, now, 1)!);
+    const busy: DayLoad = new Map([
+      [floorDay, 30],
+      [floorDay - 1, 20],
+      [floorDay - 2, 5],
+    ]);
+    expect(daysUntil(now, planExamDue(card, exam, now, 1, busy)!)).toBe(floorDay - SPREAD_DAYS);
+    // A free day after the floor day doesn't tempt it: that would let recall drop below the floor.
+    const later: DayLoad = new Map([
+      [floorDay, 30],
+      [floorDay - 1, 30],
+      [floorDay - 2, 30],
+    ]);
+    expect(daysUntil(now, planExamDue(card, exam, now, 1, later)!)).toBe(floorDay);
   });
 
   it('places the last review in the final window so that a Good answer reaches 95%', () => {
@@ -159,9 +179,10 @@ describe('a semester in exam mode', () => {
     expect(lastNewDay).toBeLessThanOrEqual(examDays - LEARNED_BY_DAYS);
     expect(Math.min(...cards.map((c) => recallAt(c, exam)))).toBeGreaterThanOrEqual(TARGET);
     expect(reviewsPerDay[examDays - 1]).toBe(0);
-    // The final pass is spread out: no single day of the window carries most of the deck.
-    const window = reviewsPerDay.slice(examDays - FINAL_FIRST, examDays - FINAL_LAST + 1);
-    expect(Math.max(...window)).toBeLessThan(cards.length / 2);
+    // The work is spread out: no day needs more than twice the average (without spreading, the
+    // days before the final window would need nearly three times as much).
+    const average = reviewsPerDay.reduce((a, b) => a + b, 0) / (examDays - 1);
+    expect(Math.max(...reviewsPerDay)).toBeLessThanOrEqual(2 * average);
     expect(startOfStudyDay(exam)).toBe(studyDayStart(start, examDays));
     // A whole simulated semester: several seconds, more on slow CI machines.
   }, 60_000);

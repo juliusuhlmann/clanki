@@ -76,8 +76,21 @@ export function normalDue(card: Pick<Card, 'due' | 'fsrs'>): number {
   return last_review + Math.max(1, Math.round(stability)) * DAY;
 }
 
-/** Cards already planned per day, `days from today` → count, used to spread the final pass. */
+/** Cards already planned per day, `days from today` → count, used to spread reviews out. */
 export type DayLoad = Map<number, number>;
+
+/** Before the final window, a review may move up to this many days earlier to a quieter day. */
+export const SPREAD_DAYS = 2;
+
+function range(from: number, to: number): number[] {
+  return Array.from({ length: to - from + 1 }, (_, i) => from + i);
+}
+
+/** The day with the fewest planned reviews; on a tie the latest, which is the most efficient. */
+function leastBusy(days: number[], load: DayLoad | undefined): number {
+  const busy = (day: number) => load?.get(day) ?? 0;
+  return days.reduce((a, b) => (busy(b) <= busy(a) ? b : a));
+}
 
 /**
  * When a reviewed card (FSRS state Review) should come back before the exam, or null if it
@@ -100,8 +113,9 @@ export function planExamDue(card: Pick<Card, 'due' | 'fsrs'>, exam: number, now:
     floorDay = day;
   }
 
-  // Well before the exam: come back just before dropping below the floor.
-  if (floorDay < windowFirst) return at(floorDay);
+  // Well before the exam: come back just before dropping below the floor, or up to SPREAD_DAYS
+  // earlier if that day is less busy (never later, which would go below the floor).
+  if (floorDay < windowFirst) return at(leastBusy(range(Math.max(earliest, floorDay - SPREAD_DAYS), floorDay), load));
 
   // Final pass: as late as allowed, on a day of the window where a "Good" gets it to TARGET,
   // preferring the least busy day so the window's work is spread out.
@@ -111,9 +125,7 @@ export function planExamDue(card: Pick<Card, 'due' | 'fsrs'>, exam: number, now:
     let candidates: number[] = [];
     for (let day = first; day <= last; day++) if (recallAfterGood(card, at(day), exam) >= TARGET) candidates.push(day);
     if (!candidates.length) candidates = [last];
-    const busy = (day: number) => load?.get(day) ?? 0;
-    const best = candidates.reduce((a, b) => (busy(b) <= busy(a) ? b : a));
-    return at(best);
+    return at(leastBusy(candidates, load));
   }
 
   // Past the window (a card answered wrongly late on): once more the day before the exam,
