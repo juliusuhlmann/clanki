@@ -231,6 +231,7 @@
   {#key runsDone}
     <RunnerGame
       seconds={RUN_SECONDS}
+      title={`Run ${runsDone + 1} of ${RUNS_PER_LIBRARY_RUN}`}
       lettersBefore={letters}
       buttonLabel={current ? 'Back to cards' : runsDone + 1 < RUNS_PER_LIBRARY_RUN ? 'Next run' : 'See results'}
       autoContinueMs={RESULTS_MS}

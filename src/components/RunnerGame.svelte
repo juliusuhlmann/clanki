@@ -6,6 +6,7 @@
 
   let {
     seconds,
+    title = 'Test run',
     lettersBefore = null,
     buttonLabel = 'Done',
     autoContinueMs = 0,
@@ -13,6 +14,8 @@
   }: {
     /** Length of the run. */
     seconds: number;
+    /** Shown above "Ready?", e.g. "Run 1 of 2". */
+    title?: string;
     /** Letters from earlier runs of the same library run; null for a test run. */
     lettersBefore?: number | null;
     buttonLabel?: string;
@@ -125,6 +128,9 @@
     if (phase === 'intro' && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
       start();
+    } else if (phase === 'intro' && e.key === 'Escape') {
+      e.preventDefault();
+      onfinish(0);
     } else if (phase === 'results' && e.key === 'Enter' && performance.now() - resultsAt > 700) {
       // Only Enter (not Space, which is also jump) and not right after the run ends.
       e.preventDefault();
@@ -139,11 +145,14 @@
   <canvas bind:this={canvas}></canvas>
 
   {#if phase === 'intro'}
-    <!-- Just "Ready?" over the corridor: tap it to fly, or skip. The controls hint shows in-game. -->
-    <div class="overlay ready">
-      <button class="ready-btn" onclick={start}>Ready?</button>
-      <button class="skip-btn" onclick={() => onfinish(0)}>Skip</button>
-    </div>
+    <!-- A title over the dark end of the corridor; the whole screen starts the run. -->
+    <button class="intro" onclick={start} aria-label="Start the run">
+      <span class="intro-kicker">{title} · {seconds} s</span>
+      <span class="intro-title">Ready?</span>
+      <span class="intro-hint">{hint}</span>
+      <span class="intro-go">{touch ? 'Tap anywhere to fly' : 'Click or press Space to fly'}</span>
+    </button>
+    <button class="skip-chip" onclick={() => onfinish(0)}>Skip</button>
   {:else if phase === 'results'}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Enter continues too) -->
     <div class="overlay" onclick={() => autoContinueMs > 0 && settled() && done()}>
@@ -195,51 +204,121 @@
     background: radial-gradient(ellipse at center, rgba(20, 12, 7, 0.25), rgba(20, 12, 7, 0.7));
   }
 
-  .overlay.ready {
+  /* Start screen: a title in the dark far end of the corridor, above the firefly. The whole
+     screen is the start button; it fades in rather than popping up. */
+  .intro {
+    position: absolute;
+    inset: 0;
+    display: flex;
     flex-direction: column;
-    gap: 1.1rem;
-    background: radial-gradient(ellipse at center, rgba(20, 12, 7, 0.1), rgba(20, 12, 7, 0.55));
-  }
-
-  /* A plain button in the app's gold accent colour, rounded like the other buttons, with a soft glow. */
-  .ready-btn {
-    min-width: 11rem;
-    min-height: 54px;
-    padding: 0.8rem 2.4rem;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    padding: max(16vh, 5rem) 16px 16px;
     font: inherit;
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: var(--on-accent);
-    background: var(--accent);
-    border: 0;
-    border-radius: var(--radius);
-    box-shadow: 0 8px 28px rgba(228, 240, 130, 0.35);
-    cursor: pointer;
-    transition: transform 0.12s, background 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .ready-btn:hover {
-    background: var(--accent-strong);
-  }
-
-  .ready-btn:active {
-    transform: scale(0.97);
-  }
-
-  .skip-btn {
-    padding: 0.5rem 1rem;
-    font: inherit;
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: rgba(244, 237, 228, 0.65);
-    background: none;
-    border: 0;
-    cursor: pointer;
-  }
-
-  .skip-btn:hover {
+    text-align: center;
     color: #f4ede4;
+    /* Darker right behind the text (the corridor's lamps hang there), lighter around the firefly. */
+    background:
+      radial-gradient(ellipse 34rem 15rem at 50% calc(max(16vh, 5rem) + 4.5rem), rgba(20, 12, 7, 0.62), transparent 70%),
+      radial-gradient(ellipse 80% 70% at 50% 35%, rgba(20, 12, 7, 0.12), rgba(20, 12, 7, 0.55));
+    border: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    animation: intro-in 0.5s ease-out both;
+  }
+
+  .intro-kicker {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(242, 195, 91, 0.85);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+  }
+
+  .intro-title {
+    font-family: var(--serif);
+    font-size: clamp(2.8rem, 10vw, 4.2rem);
+    font-weight: 600;
+    line-height: 1.05;
+    color: #fff8ef;
+    text-shadow:
+      0 0 28px rgba(255, 214, 140, 0.45),
+      0 2px 14px rgba(0, 0, 0, 0.55);
+  }
+
+  .intro-hint {
+    max-width: 22rem;
+    font-size: 0.88rem;
+    color: rgba(244, 237, 228, 0.75);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+  }
+
+  /* The call to action breathes like the firefly's lantern. */
+  .intro-go {
+    margin-top: 1.6rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #e6f07a;
+    text-shadow: 0 0 14px rgba(228, 240, 130, 0.5);
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+
+  .intro:focus-visible .intro-title {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+
+  .skip-chip {
+    position: absolute;
+    top: calc(14px + env(safe-area-inset-top));
+    right: 14px;
+    padding: 0.4rem 0.95rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(244, 237, 228, 0.8);
+    background: rgba(30, 20, 13, 0.55);
+    border: 1px solid rgba(255, 240, 220, 0.16);
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    cursor: pointer;
+    animation: intro-in 0.5s ease-out both;
+  }
+
+  .skip-chip:hover {
+    color: #fff8ef;
+    border-color: rgba(255, 240, 220, 0.32);
+  }
+
+  @keyframes intro-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .intro,
+    .skip-chip,
+    .intro-go {
+      animation: none;
+    }
   }
 
   .sheet {

@@ -41,6 +41,7 @@ Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
 - Score = letters collected in the run. The HUD shows a gold "A" and the count
 - 2 hearts; a hit costs a heart, flashes the screen and vibrates the phone; the run ends when time or hearts run out
 - Every runner run is 30s and skippable (counts 0 letters). The game never affects scheduling
+- Start screen: no buttons over the corridor. A caption ("Run 1 of 2 · 30 s" / "Test run · 30 s"), a large serif "Ready?" with a lantern glow and the controls sit in the dark far end of the corridor; "Tap anywhere to fly" breathes, the whole screen (or Space/Enter) starts, and a small "Skip" chip sits in the top-right corner (also Esc)
 
 Library run flow (`src/screens/LibraryRun.svelte`, `#/library`, started from the firefly tile on the home screen):
 - Cards come from all decks (`buildLibraryQueue`): due cards first, then new ones within each deck's daily limit, shuffled
