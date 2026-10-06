@@ -177,8 +177,8 @@ export class Spawner {
     const lanes = [0, 1, 2];
     const patterns: [number, Pattern][] = [
       [0.2, 'pile'],
-      [0.14, 'cart'],
-      [0.2, 'pair'],
+      [0.04, 'cart'], // a lone cart in one lane is too easy, so it's rare
+      [0.3, 'pair'],
       [0.15, 'ladder'],
       [0.07, 'letters'],
     ];
