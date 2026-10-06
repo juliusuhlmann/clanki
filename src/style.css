@@ -235,25 +235,28 @@ p {
   padding-top: calc(1.25rem + env(safe-area-inset-top));
 }
 
-/* A column filling the screen, so the library run can sit at the bottom. */
+/* Room at the bottom so the last deck can scroll clear of the docked library run. */
 .content.home {
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  min-height: 100dvh;
+  padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
 }
 
-.content.home > * {
-  flex: none;
-}
-
+/* The library run, docked to the bottom edge like an app's main action. The deck list
+   scrolls behind it, fading out under a soft gradient. */
 .run-dock {
-  margin-top: auto;
-  padding-top: 2rem;
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 5;
+  padding: 2.25rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 55%, transparent);
+  pointer-events: none;
 }
 
 .run-dock .run-tile {
-  margin-bottom: 0;
+  max-width: calc(44rem - 2rem);
+  margin: 0 auto;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
 }
 
 .content.home .page-head h1 {
@@ -690,6 +693,12 @@ kbd {
   border: 1.5px dashed var(--border-strong);
   border-radius: var(--radius);
   cursor: pointer;
+}
+
+.add-trigger.first {
+  margin-top: 0;
+  padding: 2rem 1rem;
+  font-size: 1.05rem;
 }
 
 .add-trigger:hover {

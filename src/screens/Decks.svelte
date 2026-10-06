@@ -66,13 +66,8 @@
   </p>
 </div>
 
-<p class="section-label">Decks</p>
-
-{#if $decks && $decks.length === 0}
-  <div class="empty panel">
-    <p>No decks yet.</p>
-  </div>
-{:else if $decks}
+{#if $decks && $decks.length > 0}
+  <p class="section-label">Decks</p>
   <ul class="list">
     {#each $decks as { deck, counts } (deck.id)}
       <li class="panel deck">
@@ -143,10 +138,13 @@
     <button class="btn ghost" type="button" onclick={() => (adding = false)}>Cancel</button>
   </form>
 {:else}
-  <button class="add-trigger" onclick={() => (adding = true)}>+ New deck</button>
+  <!-- With no decks yet, this one box is the whole empty state. -->
+  <button class="add-trigger" class:first={$decks?.length === 0} onclick={() => (adding = true)}>
+    {$decks?.length === 0 ? '+ Create your first deck' : '+ New deck'}
+  </button>
 {/if}
 
-<!-- Pinned to the bottom of the screen when the deck list is short. -->
+<!-- Docked to the bottom of the screen; the deck list scrolls behind it. -->
 <div class="run-dock">
   <a class="run-tile" href={href({ name: 'practiceRun' })}>
     <Firefly size={40} class="mark" />
