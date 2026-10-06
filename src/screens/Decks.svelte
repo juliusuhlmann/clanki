@@ -4,7 +4,6 @@
   import { deckCounts } from '../lib/scheduler';
   import { createDeck, renameDeck, deleteDeck } from '../lib/store';
   import { href } from '../lib/router.svelte';
-  import Firefly from '../components/Firefly.svelte';
 
   // Re-runs whenever the decks, cards, reviews or settings it reads change.
   const decks = liveQuery(async () => {
@@ -144,14 +143,40 @@
   </button>
 {/if}
 
-<!-- Fused to the bottom of the screen; the deck list scrolls behind it. -->
-<a class="run-strip" href={href({ name: 'practiceRun' })}>
-  <div class="run-strip-inner">
-    <Firefly size={40} class="mark" />
-    <div>
-      <h3>Library run</h3>
-      <p>{$best ? `Best ${$best} m` : 'Practice anytime'}</p>
+<!-- The library run: a lamp over a shelf at the bottom; the deck list scrolls behind it. -->
+<div class="lamp-dock">
+  <div class="lamp-shelf"></div>
+  <a class="lamp-run" href={href({ name: 'practiceRun' })} aria-label="Library run">
+    <div class="lamp-swing">
+      <div class="lamp-cone"></div>
+      <svg class="lamp-svg" viewBox="0 0 70 56" aria-hidden="true">
+        <defs>
+          <linearGradient id="lamp-cord" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#3a2a1e" stop-opacity="0" />
+            <stop offset="1" stop-color="#3a2a1e" />
+          </linearGradient>
+          <linearGradient id="lamp-brass" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#6b4b1c" />
+            <stop offset="0.45" stop-color="#e2bd66" />
+            <stop offset="1" stop-color="#6b4b1c" />
+          </linearGradient>
+          <radialGradient id="lamp-glow">
+            <stop offset="0" stop-color="#ffe7b0" stop-opacity="0.9" />
+            <stop offset="1" stop-color="#ffe7b0" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        <rect x="34" y="-6" width="2" height="26" fill="url(#lamp-cord)" />
+        <rect x="31" y="18" width="8" height="5" rx="1.5" fill="#8a6a34" />
+        <path d="M13 41 C15 27 25 21 35 21 C45 21 55 27 57 41 Z" fill="url(#lamp-brass)" />
+        <rect x="12" y="39.5" width="46" height="2.5" rx="1.2" fill="#b8913f" />
+        <ellipse cx="35" cy="43" rx="17" ry="7" fill="url(#lamp-glow)" />
+        <ellipse cx="35" cy="42.2" rx="9" ry="2.4" fill="#fff6dc" />
+      </svg>
     </div>
-    <span class="go" aria-hidden="true">→</span>
-  </div>
-</a>
+    <div class="lamp-pool"></div>
+    <span class="lamp-label">
+      <span class="lamp-title">Library run</span>
+      <span class="lamp-best">{$best ? `Best ${$best} m` : 'Start a run'}</span>
+    </span>
+  </a>
+</div>
