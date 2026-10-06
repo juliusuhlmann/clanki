@@ -1,3 +1,4 @@
+import 'katex/dist/katex.min.css';
 import './style.css';
 import { mount } from 'svelte';
 import { registerSW } from 'virtual:pwa-register';

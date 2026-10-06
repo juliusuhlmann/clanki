@@ -4,6 +4,7 @@
   import { deckCounts, formatInterval, retrievability, State } from '../lib/scheduler';
   import { createCard, updateCard, deleteCard } from '../lib/store';
   import { href } from '../lib/router.svelte';
+  import { renderCardText, searchableText } from '../lib/cardText';
   import Firefly from '../components/Firefly.svelte';
 
   let { deckId }: { deckId: string } = $props();
@@ -25,7 +26,7 @@
     const q = query.trim().toLowerCase();
     if (!$cards) return [];
     if (!q) return $cards;
-    return $cards.filter((c) => c.front.toLowerCase().includes(q) || c.back.toLowerCase().includes(q));
+    return $cards.filter((c) => searchableText(c.front).includes(q) || searchableText(c.back).includes(q));
   });
 
   async function addCard(e: SubmitEvent) {
@@ -138,8 +139,8 @@
         {:else}
           <div class="card-row">
             <div class="card-text">
-              <p class="front">{card.front}</p>
-              <p class="back-text">{card.back}</p>
+              <p class="front">{@html renderCardText(card.front)}</p>
+              <p class="back-text">{@html renderCardText(card.back)}</p>
               <p class="due-label">{dueLabel(card)} · {addedLabel(card.createdAt)}</p>
             </div>
             <button

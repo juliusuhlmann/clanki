@@ -913,6 +913,36 @@ input[type='search'] {
   color: var(--muted);
 }
 
+/* Images and maths in card text (see src/lib/cardText.ts) */
+.card-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem auto;
+  border-radius: var(--radius-sm);
+}
+
+.catalog-body .card-img {
+  max-height: 40vh;
+}
+
+.card-text .card-img {
+  max-height: 6rem;
+  margin: 0.35rem 0;
+}
+
+/* Wide formulas scroll sideways instead of overflowing the card. */
+.katex-display {
+  margin: 0.5em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.1em 0;
+}
+
+.katex {
+  white-space: normal;
+}
+
 .answer-bar {
   position: sticky;
   bottom: 0;

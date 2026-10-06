@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Card } from '../lib/db';
   import { Rating, type Grade } from '../lib/scheduler';
+  import { renderCardText } from '../lib/cardText';
 
   let {
     card,
@@ -55,9 +56,9 @@
     <span>No. {number}</span>
   </div>
   <div class="catalog-body">
-    <p class="front">{card.front}</p>
+    <p class="front">{@html renderCardText(card.front)}</p>
     {#if revealed}
-      <p class="answer">{card.back}</p>
+      <p class="answer">{@html renderCardText(card.back)}</p>
     {/if}
   </div>
 </article>

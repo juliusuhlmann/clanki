@@ -31,8 +31,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Fonts too, so the serif headings work offline. Only the Latin subsets are needed.
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}', '**/*latin-*.woff2'],
+        // Fonts too, so the serif headings and maths work offline: the Latin subsets of the serif,
+        // and KaTeX's fonts (woff2 only; browsers that read the CSS pick woff2 first).
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}', '**/*latin-*.woff2', '**/KaTeX_*.woff2'],
       },
     }),
   ],
