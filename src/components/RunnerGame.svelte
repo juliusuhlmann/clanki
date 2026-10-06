@@ -181,7 +181,7 @@
     background: radial-gradient(ellipse at center, rgba(20, 12, 7, 0.1), rgba(20, 12, 7, 0.55));
   }
 
-  /* A plain pill button in the app's accent colour, with a soft lamp glow. */
+  /* A plain button in the app's accent colour, rounded like the other buttons, with a soft glow. */
   .ready-btn {
     min-width: 11rem;
     min-height: 54px;
@@ -192,7 +192,7 @@
     color: #fffaf3;
     background: var(--accent);
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--radius);
     box-shadow: 0 8px 28px rgba(217, 119, 87, 0.45);
     cursor: pointer;
     transition: transform 0.12s, background 0.15s;
