@@ -163,5 +163,6 @@ describe('a semester in exam mode', () => {
     const window = reviewsPerDay.slice(examDays - FINAL_FIRST, examDays - FINAL_LAST + 1);
     expect(Math.max(...window)).toBeLessThan(cards.length / 2);
     expect(startOfStudyDay(exam)).toBe(studyDayStart(start, examDays));
-  });
+    // A whole simulated semester: several seconds, more on slow CI machines.
+  }, 60_000);
 });
