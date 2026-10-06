@@ -74,6 +74,12 @@ export function previewIntervals(card: Card, now: number): Record<Grade, string>
   return labels;
 }
 
+/** FSRS probability (0–1) of recalling the card right now, or null for cards never studied. */
+export function retrievability(card: Card, now: number): number | null {
+  if (card.fsrs.state === State.New) return null;
+  return scheduler.get_retrievability(toFsrsCard(card), new Date(now), false);
+}
+
 /** Applies a rating, saves the card and appends to the review log in one transaction. */
 export async function rate(
   card: Card,

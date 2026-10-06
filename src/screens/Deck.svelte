@@ -1,7 +1,7 @@
 <script lang="ts">
   import { liveQuery } from 'dexie';
-  import { db } from '../lib/db';
-  import { deckCounts, formatInterval, State } from '../lib/scheduler';
+  import { db, type Card } from '../lib/db';
+  import { deckCounts, formatInterval, retrievability, State } from '../lib/scheduler';
   import { createCard, updateCard, deleteCard } from '../lib/store';
   import { href } from '../lib/router.svelte';
   import Firefly from '../components/Firefly.svelte';
@@ -43,10 +43,13 @@
     editingId = null;
   }
 
-  function dueLabel(due: number, state: number): string {
-    if (state === State.New) return 'new';
-    const diff = due - Date.now();
-    return diff <= 0 ? 'due now' : `due in ${formatInterval(diff)}`;
+  function dueLabel(card: Card): string {
+    if (card.fsrs.state === State.New) return 'new';
+    const now = Date.now();
+    const diff = card.due - now;
+    const due = diff <= 0 ? 'due now' : `due in ${formatInterval(diff)}`;
+    const r = retrievability(card, now);
+    return r === null ? due : `${due} · ${Math.round(r * 100)}% recall`;
   }
 
   // Ctrl/Cmd+Enter submits the add form from either textarea.
@@ -130,7 +133,7 @@
             <div class="card-text">
               <p class="front">{card.front}</p>
               <p class="back-text">{card.back}</p>
-              <p class="due-label">{dueLabel(card.due, card.fsrs.state)}</p>
+              <p class="due-label">{dueLabel(card)}</p>
             </div>
             <button
               class="btn ghost small"
