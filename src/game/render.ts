@@ -1012,7 +1012,7 @@ export class Renderer {
     ctx.fill();
     const g = ctx.createLinearGradient(barX, 0, barX + barW, 0);
     g.addColorStop(0, '#f2c35b');
-    g.addColorStop(1, '#d97757');
+    g.addColorStop(1, '#d9e66c');
     ctx.fillStyle = g;
     if (frac > 0) {
       this.roundRect(barX, top, Math.max(10, barW * frac), 10, 5);

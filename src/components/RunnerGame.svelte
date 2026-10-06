@@ -177,7 +177,7 @@
     background: radial-gradient(ellipse at center, rgba(20, 12, 7, 0.1), rgba(20, 12, 7, 0.55));
   }
 
-  /* A plain button in the app's accent colour, rounded like the other buttons, with a soft glow. */
+  /* A plain button in the app's gold accent colour, rounded like the other buttons, with a soft glow. */
   .ready-btn {
     min-width: 11rem;
     min-height: 54px;
@@ -185,11 +185,11 @@
     font: inherit;
     font-size: 1.15rem;
     font-weight: 600;
-    color: #fffaf3;
+    color: var(--on-accent);
     background: var(--accent);
     border: 0;
     border-radius: var(--radius);
-    box-shadow: 0 8px 28px rgba(217, 119, 87, 0.45);
+    box-shadow: 0 8px 28px rgba(233, 184, 79, 0.4);
     cursor: pointer;
     transition: transform 0.12s, background 0.15s;
     -webkit-tap-highlight-color: transparent;

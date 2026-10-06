@@ -12,10 +12,13 @@
   --muted: #6f6b62;
   --faint: #9b978c;
 
-  --accent: #d97757;
-  --accent-strong: #c6613f;
-  --accent-soft: rgba(217, 119, 87, 0.12);
-  --on-accent: #ffffff;
+  /* Lantern gold, the same as the run meter and the lamp; dark text sits on it */
+  --accent: #e9b84f;
+  --accent-strong: #dba53a;
+  --accent-soft: rgba(233, 184, 79, 0.25);
+  /* Gold for text and outlines; darker in light mode so it stays readable */
+  --accent-text: #9a6a12;
+  --on-accent: #2a1d0c;
 
   --due: #3f7d58;
   --new: #3f6ea6;
@@ -54,7 +57,9 @@
     --muted: #aaa69b;
     --faint: #7f7b72;
 
-    --accent-soft: rgba(217, 119, 87, 0.16);
+    --accent-strong: #f2c35b;
+    --accent-soft: rgba(233, 184, 79, 0.22);
+    --accent-text: #f2c35b;
 
     --due: #84c49a;
     --new: #8db4e6;
@@ -134,7 +139,7 @@ p {
   font-weight: 650;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ---------- Layout ---------- */
@@ -735,8 +740,8 @@ kbd {
 }
 
 .add-trigger:hover {
-  color: var(--accent);
-  border-color: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent-text);
 }
 
 .empty {

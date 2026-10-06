@@ -46,7 +46,7 @@ _TODO_
 ## Design
 
 "Reading room", Claude-desktop-like, in `src/style.css`:
-- Warm ivory light mode / warm charcoal dark mode (follows the system), terracotta `#d97757` only for primary actions
+- Warm ivory light mode / warm charcoal dark mode (follows the system), lantern gold `#e9b84f` (the run meter and lamp colour, dark text on it) only for primary actions; a darker gold `--accent-text` for gold text in light mode
 - Serif headings (Source Serif 4, bundled for offline use), system sans for UI text, soft 1px borders
 - The firefly is the mascot: `src/components/Firefly.svelte` draws the game's firefly (same code) as a still icon for the header logo, the library-run tile and empty states. `src/components/Orb.svelte` is its glowing lantern as a sphere
 - App icon: a glowing lime sphere on a warm dark-brown tile (`public/icons/`; the PNGs are generated with System.Drawing, full-bleed so they work as maskable icons)
