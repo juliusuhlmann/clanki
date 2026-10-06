@@ -161,7 +161,7 @@ describe('Game', () => {
     expect(events).toContainEqual({ type: 'end', reason: 'hearts' });
   });
 
-  it('a letter gives a 20% speed boost that fades out', () => {
+  it('a letter gives a speed boost that fades out', () => {
     const boosted = emptyGame();
     const plain = emptyGame();
     boosted.letters.push({ lane: 1, z: 2, y: 0.5, char: 'C', taken: false, phase: 0 });
@@ -169,7 +169,7 @@ describe('Game', () => {
     simulate(boosted, 0.3);
     simulate(plain, 0.3);
     expect(boosted.boost).toBeGreaterThan(0.85);
-    expect(boosted.speed / plain.speed).toBeGreaterThan(1.17);
+    expect(boosted.speed / plain.speed).toBeGreaterThan(1 + BOOST_GAIN * 0.85);
     expect(boosted.speed / plain.speed).toBeLessThanOrEqual(1 + BOOST_GAIN + 1e-9);
 
     simulate(boosted, BOOST_SECONDS);
