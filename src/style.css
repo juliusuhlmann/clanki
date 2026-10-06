@@ -227,11 +227,20 @@ p {
 
 .topbar.home .topbar-inner {
   justify-content: flex-end;
+  padding-top: calc(1.1rem + env(safe-area-inset-top));
 }
 
-/* Give the greeting some breathing room from the top of the screen. */
+/* The greeting sits up top, level with settings; the rest of the page starts lower down. */
 .content.home {
-  padding-top: calc(6rem + env(safe-area-inset-top));
+  padding-top: calc(1.25rem + env(safe-area-inset-top));
+}
+
+.content.home .page-head {
+  margin-bottom: 6.25rem;
+}
+
+.content.home .page-head h1 {
+  padding-right: 3rem;
 }
 
 .row {
