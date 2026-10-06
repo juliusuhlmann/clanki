@@ -1,17 +1,69 @@
 import { describe, expect, it } from 'vitest';
-import { createRng, ladderHeightAt, minGap, PILE_HEIGHT, Spawner } from './spawner';
-import { HOVER_Y } from './engine';
+import {
+  BOOK_FALL_START_Z,
+  bookFall,
+  booksHeightAt,
+  createRng,
+  glideBlocked,
+  ladderHeightAt,
+  minGap,
+  PILE_HEIGHT,
+  ROLL_END_Z,
+  ROLL_START_Z,
+  rollingCartX,
+  Spawner,
+  TABLE_BASE,
+  TABLE_HEIGHT,
+} from './spawner';
+import { HOVER_Y, LANE_X } from './engine';
 
 describe('Spawner', () => {
-  it('always leaves at least one lane completely empty', () => {
+  it('always leaves at least one lane you can glide through without jumping', () => {
     for (const seed of [1, 2, 3, 42, 1234]) {
       const spawner = new Spawner(createRng(seed));
       for (let i = 0; i < 2000; i++) {
         const row = spawner.next(11 + (i % 10));
-        const blocked = new Set(row.obstacles.flatMap((o) => o.lanes));
+        const blocked = new Set(row.obstacles.flatMap(glideBlocked));
         expect(blocked.size).toBeLessThan(3);
       }
     }
+  });
+
+  it('only adds rolling carts, tables and falling books when variety is on', () => {
+    const plain = new Spawner(createRng(3));
+    const varied = new Spawner(createRng(3));
+    const seen = new Set<string>();
+    for (let i = 0; i < 1000; i++) {
+      for (const o of plain.next(12, false).obstacles) expect(['pile', 'cart', 'ladder']).toContain(o.kind);
+      for (const o of varied.next(12, true).obstacles) seen.add(o.kind);
+    }
+    expect(seen).toEqual(new Set(['pile', 'cart', 'ladder', 'rollingCart', 'table', 'books']));
+  });
+
+  it('rolling carts drift into an adjacent lane and settle well before reaching you', () => {
+    const spawner = new Spawner(createRng(21));
+    for (let i = 0; i < 2000; i++) {
+      for (const o of spawner.next(12).obstacles) {
+        if (o.kind !== 'rollingCart') continue;
+        expect(Math.abs(o.fromLane! - o.lanes[0])).toBe(1);
+        expect(rollingCartX(o.fromLane!, o.lanes[0], ROLL_START_Z + 5, LANE_X)).toBe(LANE_X[o.fromLane!]);
+        expect(rollingCartX(o.fromLane!, o.lanes[0], ROLL_END_Z, LANE_X)).toBe(LANE_X[o.lanes[0]]);
+      }
+    }
+    expect(ROLL_END_Z).toBeGreaterThan(10);
+  });
+
+  it('falling books build a jumpable pile that is complete well before it reaches you', () => {
+    expect(booksHeightAt(BOOK_FALL_START_Z + 1)).toBe(0);
+    expect(booksHeightAt(11)).toBeCloseTo(PILE_HEIGHT);
+    expect(bookFall(2, 11)).toBe(1);
+  });
+
+  it('tables leave room to glide under but not to jump over', () => {
+    const glideTop = HOVER_Y + 0.25;
+    const apexBottom = HOVER_Y + 1.13 - 0.25;
+    expect(glideTop).toBeLessThan(TABLE_BASE);
+    expect(apexBottom).toBeLessThan(TABLE_HEIGHT);
   });
 
   it('spaces rows far enough apart to cross two lanes at the current speed', () => {

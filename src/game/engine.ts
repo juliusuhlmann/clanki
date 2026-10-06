@@ -1,7 +1,7 @@
 // Runner game state and rules. Pure logic: no drawing, no DOM.
 // World units: x = sideways (lanes), y = up, z = distance ahead of the player.
 
-import { createRng, ladderHeightAt, ladderLine, Spawner, type ObstacleKind } from './spawner';
+import { booksHeightAt, createRng, ladderHeightAt, ladderLine, rollingCartX, Spawner, type ObstacleKind } from './spawner';
 
 export const LANE_X = [-1.1, 0, 1.1];
 export const SPAWN_Z = 46;
@@ -24,6 +24,8 @@ const ATTRACT_SPEED = 5;
 const START_HEARTS = 3;
 const INVULNERABLE_SECONDS = 1.2;
 const FIRST_ROW_DELAY = 22;
+/** Seconds into a run before rolling carts, reading tables and falling books appear. */
+const VARIETY_AFTER = 6;
 
 // Letters give a speed burst: +20% that fades out over 4 seconds. Another letter
 // refills it rather than stacking, so top speed stays fair (≈ 0.65s to react at most).
@@ -41,11 +43,23 @@ export interface Obstacle {
   kind: ObstacleKind;
   lanes: number[];
   side?: -1 | 1;
+  fromLane?: number;
+  base?: number;
   z: number;
   depth: number;
   height: number;
   variant: number;
   hit: boolean;
+}
+
+/** Sideways centre of a one-lane obstacle right now (rolling carts move). */
+export function obstacleX(o: Obstacle): number {
+  return o.kind === 'rollingCart' && o.fromLane !== undefined ? rollingCartX(o.fromLane, o.lanes[0], o.z, LANE_X) : LANE_X[o.lanes[0]];
+}
+
+/** Current height of an obstacle's top (falling books build up as they land). */
+export function obstacleHeight(o: Obstacle): number {
+  return o.kind === 'books' ? booksHeightAt(o.z) : o.height;
 }
 
 export interface Letter {
@@ -183,7 +197,7 @@ export class Game {
     // Spawn new rows.
     this.untilNextRow -= dz;
     if (this.untilNextRow <= 0) {
-      const row = this.spawner.next(this.speed);
+      const row = this.spawner.next(this.speed, this.elapsed >= VARIETY_AFTER);
       for (const o of row.obstacles) this.obstacles.push({ ...o, z: SPAWN_Z, hit: false });
       for (const l of row.letters)
         this.letters.push({ ...l, z: SPAWN_Z + l.dz, taken: false, phase: this.rng() * Math.PI * 2 });
@@ -211,10 +225,12 @@ export class Game {
         if (o.kind === 'ladder' && o.side) {
           hit = this.touchesLadder(o.side, bottom, top);
         } else {
-          const x0 = LANE_X[Math.min(...o.lanes)] - 0.45;
-          const x1 = LANE_X[Math.max(...o.lanes)] + 0.45;
+          const moving = o.kind === 'rollingCart';
+          const x0 = (moving ? obstacleX(o) : LANE_X[Math.min(...o.lanes)]) - 0.45;
+          const x1 = (moving ? obstacleX(o) : LANE_X[Math.max(...o.lanes)]) + 0.45;
           const overlapX = this.x + SPARK_HALF_WIDTH > x0 && this.x - SPARK_HALF_WIDTH < x1;
-          hit = overlapX && bottom < o.height;
+          // Tables float above the floor: glide under them, but don't jump into them.
+          hit = overlapX && bottom < obstacleHeight(o) && top > (o.base ?? 0);
         }
         if (hit) {
           o.hit = true;

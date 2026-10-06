@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BOOST_GAIN, BOOST_SECONDS, Game, type Action, type GameEvent } from './engine';
-import { CART_HEIGHT, LADDER_TOP_Y, PILE_HEIGHT } from './spawner';
+import { BOOST_GAIN, BOOST_SECONDS, Game, LANE_X, type Action, type GameEvent } from './engine';
+import { CART_HEIGHT, LADDER_TOP_Y, PILE_HEIGHT, TABLE_BASE, TABLE_DEPTH, TABLE_HEIGHT } from './spawner';
 
 const DT = 1 / 60;
 
@@ -67,6 +67,43 @@ describe('Game', () => {
     expect(game.onGround).toBe(true);
     simulate(game, 0.1, { 0: 'down' });
     expect(game.jumpY).toBe(0);
+  });
+
+  it('a rolling cart hits you in the lane it drifts into, not the one it left', () => {
+    for (const [lane, hits] of [
+      [0, true],
+      [1, false],
+    ] as const) {
+      const game = emptyGame();
+      game.lane = lane;
+      game.x = LANE_X[lane];
+      game.obstacles.push({ kind: 'rollingCart', lanes: [0], fromLane: 1, z: 32, depth: 0.8, height: CART_HEIGHT, variant: 1, hit: false });
+      const events = simulate(game, 3.5);
+      expect(events.some((e) => e.type === 'hit')).toBe(hits);
+    }
+  });
+
+  it('you glide under a reading table, but jumping into it hits', () => {
+    const table = (game: Game) =>
+      game.obstacles.push({ kind: 'table', lanes: [0, 1], base: TABLE_BASE, z: 5, depth: TABLE_DEPTH, height: TABLE_HEIGHT, variant: 1, hit: false });
+    const glide = emptyGame();
+    table(glide);
+    expect(simulate(glide, 1.2).some((e) => e.type === 'hit')).toBe(false);
+    const jump = emptyGame();
+    table(jump);
+    expect(simulate(jump, 1.2, { 15: 'jump' }).some((e) => e.type === 'hit')).toBe(true);
+  });
+
+  it('falling books land as a pile you can hit or jump over', () => {
+    const books = (game: Game) =>
+      game.obstacles.push({ kind: 'books', lanes: [1], side: -1, z: 30, depth: 0.7, height: PILE_HEIGHT, variant: 1, hit: false });
+    const stay = emptyGame();
+    books(stay);
+    expect(simulate(stay, 3.5).some((e) => e.type === 'hit')).toBe(true);
+    const jump = emptyGame();
+    books(jump);
+    // ~30 units at 11+/s: arrives after ~2.6s.
+    expect(simulate(jump, 3.5, { 145: 'jump' }).some((e) => e.type === 'hit')).toBe(false);
   });
 
   it('jumping does not clear a cart, but changing lanes does', () => {

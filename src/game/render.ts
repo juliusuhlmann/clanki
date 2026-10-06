@@ -1,7 +1,7 @@
 // Draws the library corridor, obstacles, the firefly and the HUD on a 2D canvas.
 
-import { HOVER_Y, LANE_X, type Game, type Letter, type Obstacle } from './engine';
-import { createRng, ladderLine, WALL_X } from './spawner';
+import { HOVER_Y, LANE_X, obstacleX, type Game, type Letter, type Obstacle } from './engine';
+import { BOOK_FALL_START_Z, BOOK_THICKNESS, bookFall, createRng, ladderLine, WALL_X } from './spawner';
 import { drawFirefly, FIREFLY_LIGHT } from './firefly';
 import { BOOK_COLORS, makeLetterSprite, makeShelfTextures, makeVignette } from './textures';
 
@@ -536,80 +536,260 @@ export class Renderer {
     const pick = () => BOOK_COLORS[Math.floor(rng() * BOOK_COLORS.length)];
 
     if (o.kind === 'pile') {
-      const cx = LANE_X[o.lanes[0]];
-      this.floorShadow(cx - 0.45, cx + 0.45, o.z, o.z + o.depth, 0.45);
-      let y = 0;
-      const count = 4;
-      for (let i = 0; i < count; i++) {
-        const h = i === count - 1 ? o.height - y : 0.1 + rng() * 0.05;
-        const half = 0.34 + rng() * 0.09;
-        const off = (rng() - 0.5) * 0.1;
-        const dz = rng() * 0.12;
-        const color = pick();
-        this.box(cx - half + off, cx + half + off, y, y + h, o.z + dz, o.z + o.depth - 0.05 + dz * 0.3, color);
-        // Page edges on the front.
-        const f = fogAt(o.z);
-        const a = this.p(cx - half + off + 0.04, y + h * 0.3, o.z + dz);
-        const b = this.p(cx + half + off - 0.03, y + h * 0.7, o.z + dz);
-        this.ctx.fillStyle = fogged('#e9dcc0', f, -0.05, this.litAt(cx, y, o.z));
-        this.ctx.fillRect(a.x, b.y, b.x - a.x, a.y - b.y);
-        y += h;
+      this.drawPile(LANE_X[o.lanes[0]], o.z, o.depth, o.height, rng, pick);
+    } else if (o.kind === 'cart' || o.kind === 'rollingCart') {
+      const cx = obstacleX(o);
+      if (o.kind === 'rollingCart') {
+        // Scuff lines trailing behind while it drifts across.
+        const drift = cx - obstacleX({ ...o, z: o.z + 0.6 });
+        if (Math.abs(drift) > 0.005) this.drawDriftLines(cx, o.z, o.z + o.depth, Math.sign(drift), Math.min(1, Math.abs(drift) * 6));
       }
-    } else if (o.kind === 'cart') {
-      const cx = LANE_X[o.lanes[0]];
-      const x0 = cx - 0.43;
-      const x1 = cx + 0.43;
-      const z0 = o.z;
-      const z1 = o.z + o.depth;
-      const f = fogAt(z0);
-      const lit = this.litAt(cx, 0.6, z0);
-      this.floorShadow(x0, x1, z0, z1, 0.5);
-      // Books standing on the top shelf.
-      let bx = x0 + 0.04;
-      while (bx < x1 - 0.08) {
-        const w = 0.07 + rng() * 0.06;
-        const h = 0.22 + rng() * 0.2;
-        this.box(bx, Math.min(bx + w, x1 - 0.04), 1.02, 1.02 + h, z0 + 0.15, z1 - 0.15, pick());
-        bx += w + 0.01;
-      }
-      // Cart body.
-      this.box(x0, x1, 0.16, 1.02, z0, z1, '#6b4226');
-      // Two open compartments with book spines on the front.
-      for (const [yb, yt] of [
-        [0.24, 0.56],
-        [0.62, 0.94],
-      ] as const) {
-        const a = this.p(x0 + 0.06, yt, z0);
-        const b = this.p(x1 - 0.06, yb, z0);
-        this.ctx.fillStyle = fogged('#1a0f08', f);
-        this.ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
-        let sx = x0 + 0.08;
-        while (sx < x1 - 0.1) {
-          const w = 0.05 + rng() * 0.05;
-          const top = yb + (yt - yb) * (0.55 + rng() * 0.4);
-          const p0 = this.p(sx, top, z0);
-          const p1 = this.p(Math.min(sx + w, x1 - 0.08), yb, z0);
-          this.ctx.fillStyle = fogged(pick(), f, -0.1, lit);
-          this.ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
-          sx += w + 0.012;
-        }
-      }
-      // Push handle and wheels.
-      this.box(x0 + 0.05, x1 - 0.05, 1.32, 1.38, z1 - 0.06, z1, '#b08a4a');
-      for (const wx of [x0 + 0.1, x1 - 0.1]) {
-        const w = this.p(wx, 0.08, z0 + 0.05);
-        this.ctx.fillStyle = fogged('#1b1410', f);
-        this.ctx.beginPath();
-        this.ctx.arc(w.x, w.y, Math.max(1, 0.08 * w.s), 0, Math.PI * 2);
-        this.ctx.fill();
-        this.ctx.fillStyle = fogged('#8f7a5a', f);
-        this.ctx.beginPath();
-        this.ctx.arc(w.x, w.y, Math.max(0.5, 0.03 * w.s), 0, Math.PI * 2);
-        this.ctx.fill();
-      }
+      this.drawCart(cx, o.z, o.z + o.depth, rng, pick);
+    } else if (o.kind === 'table') {
+      this.drawTable(o, rng, pick);
+    } else if (o.kind === 'books') {
+      this.drawFallingBooks(o, rng, pick);
     } else if (o.side) {
       this.drawLadder(o.side, o.z, o.z + o.depth);
     }
+  }
+
+  private drawPile(cx: number, z: number, depth: number, height: number, rng: () => number, pick: () => string): void {
+    this.floorShadow(cx - 0.45, cx + 0.45, z, z + depth, 0.45);
+    let y = 0;
+    const count = 4;
+    for (let i = 0; i < count; i++) {
+      const h = i === count - 1 ? height - y : 0.1 + rng() * 0.05;
+      const half = 0.34 + rng() * 0.09;
+      const off = (rng() - 0.5) * 0.1;
+      const dz = rng() * 0.12;
+      const color = pick();
+      this.box(cx - half + off, cx + half + off, y, y + h, z + dz, z + depth - 0.05 + dz * 0.3, color);
+      this.pageEdge(cx - half + off, cx + half + off, y, h, z + dz);
+      y += h;
+    }
+  }
+
+  /** The pale block of page edges on the front of a lying book. */
+  private pageEdge(x0: number, x1: number, y: number, h: number, z: number): void {
+    const f = fogAt(z);
+    const a = this.p(x0 + 0.04, y + h * 0.3, z);
+    const b = this.p(x1 - 0.03, y + h * 0.7, z);
+    this.ctx.fillStyle = fogged('#e9dcc0', f, -0.05, this.litAt((x0 + x1) / 2, y, z));
+    this.ctx.fillRect(a.x, b.y, b.x - a.x, a.y - b.y);
+  }
+
+  private drawCart(cx: number, z0: number, z1: number, rng: () => number, pick: () => string): void {
+    const x0 = cx - 0.43;
+    const x1 = cx + 0.43;
+    const f = fogAt(z0);
+    const lit = this.litAt(cx, 0.6, z0);
+    this.floorShadow(x0, x1, z0, z1, 0.5);
+    // Books standing on the top shelf.
+    let bx = x0 + 0.04;
+    while (bx < x1 - 0.08) {
+      const w = 0.07 + rng() * 0.06;
+      const h = 0.22 + rng() * 0.2;
+      this.box(bx, Math.min(bx + w, x1 - 0.04), 1.02, 1.02 + h, z0 + 0.15, z1 - 0.15, pick());
+      bx += w + 0.01;
+    }
+    // Cart body.
+    this.box(x0, x1, 0.16, 1.02, z0, z1, '#6b4226');
+    // Two open compartments with book spines on the front.
+    for (const [yb, yt] of [
+      [0.24, 0.56],
+      [0.62, 0.94],
+    ] as const) {
+      const a = this.p(x0 + 0.06, yt, z0);
+      const b = this.p(x1 - 0.06, yb, z0);
+      this.ctx.fillStyle = fogged('#1a0f08', f);
+      this.ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+      let sx = x0 + 0.08;
+      while (sx < x1 - 0.1) {
+        const w = 0.05 + rng() * 0.05;
+        const top = yb + (yt - yb) * (0.55 + rng() * 0.4);
+        const p0 = this.p(sx, top, z0);
+        const p1 = this.p(Math.min(sx + w, x1 - 0.08), yb, z0);
+        this.ctx.fillStyle = fogged(pick(), f, -0.1, lit);
+        this.ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+        sx += w + 0.012;
+      }
+    }
+    // Push handle and wheels.
+    this.box(x0 + 0.05, x1 - 0.05, 1.32, 1.38, z1 - 0.06, z1, '#b08a4a');
+    for (const wx of [x0 + 0.1, x1 - 0.1]) {
+      const w = this.p(wx, 0.08, z0 + 0.05);
+      this.ctx.fillStyle = fogged('#1b1410', f);
+      this.ctx.beginPath();
+      this.ctx.arc(w.x, w.y, Math.max(1, 0.08 * w.s), 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.fillStyle = fogged('#8f7a5a', f);
+      this.ctx.beginPath();
+      this.ctx.arc(w.x, w.y, Math.max(0.5, 0.03 * w.s), 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+  }
+
+  /** Faint scuff lines on the floor behind a cart that is rolling sideways. */
+  private drawDriftLines(cx: number, z0: number, z1: number, dir: number, strength: number): void {
+    const ctx = this.ctx;
+    const f = fogAt(z0);
+    ctx.lineCap = 'round';
+    for (const z of [z0 + 0.1, z1 - 0.1]) {
+      for (let k = 0; k < 3; k++) {
+        const len = 0.35 + k * 0.18;
+        const a = this.p(cx - dir * 0.45, 0.01, z);
+        const b = this.p(cx - dir * (0.45 + len), 0.01, z);
+        ctx.strokeStyle = `rgba(255,228,180,${0.3 * strength * (1 - f) * (1 - k * 0.3)})`;
+        ctx.lineWidth = Math.max(1, 0.03 * a.s);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  /** A reading table across two or three lanes: glide underneath it. */
+  private drawTable(o: Obstacle, rng: () => number, pick: () => string): void {
+    const ctx = this.ctx;
+    const x0 = LANE_X[Math.min(...o.lanes)] - 0.5;
+    const x1 = LANE_X[Math.max(...o.lanes)] + 0.5;
+    const z0 = o.z;
+    const z1 = o.z + o.depth;
+    const base = o.base ?? 0.8;
+    const top = base + 0.12;
+    const f = fogAt(z0);
+    const wood = '#5a3620';
+
+    // Deep shadow underneath, then legs (back pair first).
+    this.quad(this.p(x0, 0.002, z0), this.p(x1, 0.002, z0), this.p(x1, 0.002, z1), this.p(x0, 0.002, z1), `rgba(10,4,2,${0.45 * (1 - f)})`);
+    for (const z of [z1 - 0.14, z0 + 0.04]) {
+      for (const lx of [x0 + 0.04, x1 - 0.14]) this.box(lx, lx + 0.1, 0, base, z, z + 0.1, '#3e2414');
+    }
+    // A slim apron under the front edge makes the gap below read clearly.
+    this.box(x0 + 0.04, x1 - 0.04, base - 0.06, base, z0 + 0.04, z1 - 0.04, '#4a2c18');
+    this.box(x0, x1, base, top, z0, z1, wood);
+
+    // Green leather writing surface.
+    const inset = 0.12;
+    this.quad(
+      this.p(x0 + inset, top + 0.001, z0 + inset),
+      this.p(x1 - inset, top + 0.001, z0 + inset),
+      this.p(x1 - inset, top + 0.001, z1 - inset),
+      this.p(x0 + inset, top + 0.001, z1 - inset),
+      fogged('#2f5a40', f, 0, this.litAt((x0 + x1) / 2, top, z0) * 0.5),
+    );
+
+    // Things on the table, one per lane-width: a banker's lamp, stacked books or an open book.
+    const slots = o.lanes.length;
+    const lampSlot = Math.floor(rng() * slots);
+    for (let s = 0; s < slots; s++) {
+      const cx = LANE_X[o.lanes[s]];
+      const zc = z0 + 0.5 + rng() * 0.3;
+      if (s === lampSlot) {
+        this.drawDeskLamp(cx + (rng() - 0.5) * 0.3, top, zc);
+      } else if (rng() < 0.55) {
+        let y = top;
+        for (let i = 0; i < 3; i++) {
+          const h = 0.07 + rng() * 0.04;
+          const half = 0.18 + rng() * 0.06;
+          const off = (rng() - 0.5) * 0.08;
+          this.box(cx - half + off, cx + half + off, y, y + h, zc, zc + 0.36, pick());
+          y += h;
+        }
+      } else {
+        // An open book: two pale pages on a coloured cover.
+        const cover = pick();
+        this.quad(this.p(cx - 0.3, top + 0.01, zc), this.p(cx + 0.3, top + 0.01, zc), this.p(cx + 0.3, top + 0.01, zc + 0.4), this.p(cx - 0.3, top + 0.01, zc + 0.4), fogged(cover, f));
+        for (const side of [-1, 1]) {
+          const xa = cx + side * 0.02;
+          const xb = cx + side * 0.27;
+          this.quad(this.p(xa, top + 0.03, zc + 0.03), this.p(xb, top + 0.02, zc + 0.03), this.p(xb, top + 0.02, zc + 0.37), this.p(xa, top + 0.03, zc + 0.37), fogged('#efe3c8', f, 0, this.litAt(cx, top, zc)));
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /** A green-shaded banker's lamp, glowing onto the table. */
+  private drawDeskLamp(cx: number, y: number, z: number): void {
+    const ctx = this.ctx;
+    const f = fogAt(z);
+    // Warm pool of light on the leather.
+    const c = this.p(cx, y + 0.002, z + 0.15);
+    const r = 0.5 * c.s;
+    ctx.globalCompositeOperation = 'lighter';
+    const pool = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, r);
+    pool.addColorStop(0, `rgba(255,214,140,${0.35 * (1 - f)})`);
+    pool.addColorStop(1, 'rgba(255,214,140,0)');
+    ctx.fillStyle = pool;
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, r, r * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    // Brass base and stem, then the green shade.
+    this.box(cx - 0.1, cx + 0.1, y, y + 0.04, z, z + 0.18, '#b08a4a');
+    this.box(cx - 0.015, cx + 0.015, y + 0.04, y + 0.36, z + 0.08, z + 0.11, '#c9a45a');
+    this.box(cx - 0.2, cx + 0.2, y + 0.33, y + 0.45, z, z + 0.2, '#2f7a4a');
+    // Glowing underside of the shade.
+    const a = this.p(cx - 0.18, y + 0.335, z + 0.01);
+    const b = this.p(cx + 0.18, y + 0.33, z + 0.01);
+    ctx.fillStyle = `rgba(255,236,180,${1 - f})`;
+    ctx.fillRect(a.x, a.y, b.x - a.x, Math.max(1, 0.025 * a.s));
+  }
+
+  /** Books tumbling off a high shelf one after another, stacking into a pile. */
+  private drawFallingBooks(o: Obstacle, rng: () => number, pick: () => string): void {
+    const ctx = this.ctx;
+    const cx = LANE_X[o.lanes[0]];
+    const side = o.side ?? -1;
+    const z0 = o.z;
+    const z1 = o.z + o.depth;
+    const f = fogAt(z0);
+
+    // The landing spot's shadow darkens as the first book approaches.
+    const warn = Math.min(1, Math.max(0, (BOOK_FALL_START_Z + 8 - z0) / 10));
+    if (warn > 0) {
+      const c = this.p(cx, 0.003, (z0 + z1) / 2);
+      const rx = 0.42 * c.s * (0.6 + 0.4 * warn);
+      ctx.fillStyle = `rgba(10,4,2,${0.45 * warn * (1 - f)})`;
+      ctx.beginPath();
+      ctx.ellipse(c.x, c.y, rx, Math.max(1, rx * 0.35), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    let y = 0;
+    BOOK_THICKNESS.forEach((h, i) => {
+      const color = pick();
+      const half = 0.3 + rng() * 0.08;
+      const off = (rng() - 0.5) * 0.1;
+      const t = bookFall(i, z0);
+      if (t >= 1) {
+        this.box(cx - half + off, cx + half + off, y, y + h, z0, z1 - 0.05, color);
+        this.pageEdge(cx - half + off, cx + half + off, y, h, z0);
+      } else {
+        // On the shelf edge, then arcing down into the lane, spinning.
+        const startX = side * (WALL_X - 0.15);
+        const startY = 2.4 + i * 0.35;
+        const e = t * t;
+        const x = startX + (cx + off - startX) * Math.min(1, t * 1.15);
+        const by = startY + (y + h / 2 - startY) * e + Math.sin(t * Math.PI) * 0.35;
+        const p = this.p(x, by, (z0 + z1) / 2);
+        const angle = t === 0 ? side * 0.15 * Math.sin(this.t * 9 + i) : -side * t * Math.PI * 1.25;
+        const w = half * 2 * p.s;
+        const hh = Math.max(2, (h + 0.05) * p.s);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(angle);
+        ctx.fillStyle = fogged(color, f, 0, this.litAt(x, by, z0));
+        ctx.fillRect(-w / 2, -hh / 2, w, hh);
+        ctx.fillStyle = fogged('#e9dcc0', f, -0.05);
+        ctx.fillRect(-w / 2 + w * 0.08, -hh * 0.12, w * 0.8, hh * 0.24);
+        ctx.restore();
+      }
+      if (t >= 1) y += h;
+    });
   }
 
   /** A wooden library ladder leaning across the corridor against one bookshelf. */
