@@ -1,14 +1,14 @@
-// Draws the library corridor, obstacles, the spark and the HUD on a 2D canvas.
+// Draws the library corridor, obstacles, the firefly and the HUD on a 2D canvas.
 
 import { HOVER_Y, LANE_X, type Game, type Letter, type Obstacle } from './engine';
 import { createRng, ladderLine, WALL_X } from './spawner';
-import { drawSpark } from './spark';
+import { drawFirefly, FIREFLY_LIGHT } from './firefly';
 import { BOOK_COLORS, makeLetterSprite, makeShelfTextures, makeVignette } from './textures';
 
 // Camera and corridor dimensions, in world units.
 const CAM_Y = 2.1;
 const CAM_BACK = 3.2;
-const CAM_FOLLOW = 0.85; // how far the camera follows the spark sideways (1 = fully)
+const CAM_FOLLOW = 0.85; // how far the camera follows the firefly sideways (1 = fully)
 const NEAR = -2.6;
 const FAR = 46;
 const SHELF_H = 3.6; // one bookshelf tier; walls are two tiers high
@@ -47,14 +47,18 @@ function fogAt(z: number): number {
   return Math.min(1, Math.pow((z - 6) / (FAR - 6), 1.15));
 }
 
-/** Mixes a colour toward the fog colour and returns a CSS string. */
-function fogged(hex: string, fog: number, light = 0): string {
+/**
+ * Mixes a colour toward the fog colour and returns a CSS string. `light` brightens (or darkens,
+ * if negative); `glow` tints it toward the firefly's light.
+ */
+function fogged(hex: string, fog: number, light = 0, glow = 0): string {
   const n = parseInt(hex.slice(1), 16);
-  const ch = (v: number, f: number) => {
-    const lit = light >= 0 ? v + (255 - v) * light : v * (1 + light);
+  const ch = (v: number, f: number, l: number) => {
+    let lit = light >= 0 ? v + (255 - v) * light : v * (1 + light);
+    lit += (l - lit) * glow;
     return Math.round(lit * (1 - fog) + f * fog);
   };
-  return `rgb(${ch((n >> 16) & 255, FOG[0])},${ch((n >> 8) & 255, FOG[1])},${ch(n & 255, FOG[2])})`;
+  return `rgb(${ch((n >> 16) & 255, FOG[0], FIREFLY_LIGHT[0])},${ch((n >> 8) & 255, FOG[1], FIREFLY_LIGHT[1])},${ch(n & 255, FOG[2], FIREFLY_LIGHT[2])})`;
 }
 
 function hash(n: number): number {
@@ -80,8 +84,12 @@ export class Renderer {
   private cx = 0;
   private hy = 0;
   private t = 0;
-  /** Camera's sideways position; follows the spark so lane changes shift the perspective. */
+  /** Camera's sideways position; follows the firefly so lane changes shift the perspective. */
   private camX = 0;
+  /** The firefly's position and lantern brightness this frame, for lighting the scene. */
+  private lightX = 0;
+  private lightY = HOVER_Y;
+  private glow = 1;
 
   private shelves = makeShelfTextures(6);
   private letterSprites = new Map<string, HTMLCanvasElement>();
@@ -151,8 +159,12 @@ export class Renderer {
 
   render(game: Game, dt: number, hud: HudInfo): void {
     this.t += dt;
-    // Follow the spark most of the way, slightly lagging, like other lane runners.
+    // Follow the firefly most of the way, slightly lagging, like other lane runners.
     this.camX += (game.x * CAM_FOLLOW - this.camX) * Math.min(1, dt * 9);
+    this.lightX = game.x;
+    this.lightY = HOVER_Y + game.jumpY;
+    // A slow breathing pulse; letters make the lantern flare.
+    this.glow = 0.9 + 0.1 * Math.sin(this.t * 2.6) + game.boost * 0.35;
     const ctx = this.ctx;
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
@@ -161,8 +173,11 @@ export class Renderer {
     this.drawCeiling(game.distance);
     this.drawFloor(game.distance);
     this.drawLightPools(game.distance);
+    this.drawFireflyFloorLight();
     this.drawShelves(game.distance, -1);
     this.drawShelves(game.distance, 1);
+    this.drawFireflyWallLight(-1);
+    this.drawFireflyWallLight(1);
     this.updateParticles(game, dt);
     this.drawObjects(game);
     this.drawDust(dt);
@@ -324,6 +339,96 @@ export class Renderer {
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  /** How strongly the lantern lights a point (0..~0.5), for tinting nearby objects. */
+  private litAt(x: number, y: number, z: number): number {
+    const d = Math.hypot(x - this.lightX, (y - this.lightY) * 0.7, z * 0.8);
+    const k = Math.max(0, 1 - d / 4.2);
+    return k * k * 0.42 * this.glow;
+  }
+
+  /** The pool of light the firefly casts on the floor, stretching a little ahead of it. */
+  private drawFireflyFloorLight(): void {
+    const ctx = this.ctx;
+    // A little warmer than the lantern itself, so it doesn't turn the red carpet muddy green.
+    const [r, g, b] = [244, 226, 140];
+    // Higher up, the pool spreads and fades.
+    const lift = Math.max(0, this.lightY - HOVER_Y);
+    const spread = 1 + lift * 0.35;
+    const c = this.p(this.lightX, 0, 0.9);
+    const rx = 1.7 * spread * this.p(this.lightX, 0, 0).s;
+    const ry = Math.max(2, (this.p(this.lightX, 0, 0.9 - 2.4 * spread).y - this.p(this.lightX, 0, 0.9 + 2.4 * spread).y) / 2);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.scale(1, ry / rx);
+    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+    const a = (0.42 * Math.min(1.08, this.glow)) / spread;
+    grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+    grad.addColorStop(0.45, `rgba(${r},${g},${b},${a * 0.4})`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, rx, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /**
+   * Dims the scene away from the firefly, so the corridor feels dark and its lantern carries
+   * the light. The clear area is stretched up the corridor to keep the path ahead readable.
+   */
+  private drawDarkness(game: Game): void {
+    const ctx = this.ctx;
+    const c = this.p(game.x, HOVER_Y + game.jumpY, 0);
+    const inner = 0.9 * c.s * this.glow;
+    const outer = Math.max(this.w, this.h) * 0.75;
+    const stretch = 1.5;
+    ctx.save();
+    ctx.translate(c.x, c.y - outer * 0.25);
+    ctx.scale(1, stretch);
+    const grad = ctx.createRadialGradient(0, outer * 0.25 / stretch, inner, 0, 0, outer);
+    grad.addColorStop(0, 'rgba(14,8,4,0)');
+    grad.addColorStop(0.45, 'rgba(14,8,4,0.22)');
+    grad.addColorStop(1, 'rgba(14,8,4,0.6)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(-this.w * 2, -this.h * 2, this.w * 4, this.h * 4);
+    ctx.restore();
+  }
+
+  /** A soft glow on the bookshelf beside the firefly, brighter in the lane next to it. */
+  private drawFireflyWallLight(side: -1 | 1): void {
+    const ctx = this.ctx;
+    const x = side * WALL_X;
+    const k = Math.max(0, Math.min(1, 1 - (Math.abs(x - this.lightX) - 1.2) / 2.4));
+    if (k <= 0) return;
+    const [r, g, b] = FIREFLY_LIGHT;
+    const z0 = NEAR + 0.2;
+    const z1 = 6;
+    ctx.save();
+    ctx.beginPath();
+    for (const [y, z] of [
+      [0, z0],
+      [CEIL_Y, z0],
+      [CEIL_Y, z1],
+      [0, z1],
+    ] as const) {
+      const q = this.p(x, y, z);
+      ctx.lineTo(q.x, q.y);
+    }
+    ctx.closePath();
+    ctx.clip();
+    const c = this.p(x, this.lightY + 0.3, 0.4);
+    const rad = 2.3 * c.s;
+    const grad = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, rad);
+    grad.addColorStop(0, `rgba(${r},${g},${b},${0.26 * k * this.glow})`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = grad;
+    ctx.fillRect(c.x - rad, c.y - rad, rad * 2, rad * 2);
+    ctx.restore();
+  }
+
   /** Bookshelf walls, drawn as vertical texture strips so they follow the perspective. */
   private drawShelves(distance: number, side: -1 | 1): void {
     const ctx = this.ctx;
@@ -393,8 +498,10 @@ export class Renderer {
       if (z > NEAR + 0.6) items.push({ z, draw: () => this.drawLamp(z) });
     }
 
+    // Darkness closes in away from the firefly; drawn over everything ahead of it.
+    items.push({ z: 0.002, draw: () => this.drawDarkness(game) });
     items.push({ z: 0, draw: () => this.drawPlayer(game) });
-    // Particles go just behind the spark so the trail never covers its face.
+    // Particles go just behind the firefly so the trail never covers it.
     items.push({ z: 0.001, draw: () => this.drawParticles() });
     items.sort((a, b) => b.z - a.z);
     for (const it of items) it.draw();
@@ -403,16 +510,18 @@ export class Renderer {
   /** A shaded box: front face, top (if below the camera) and the visible side. */
   private box(x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, color: string): void {
     const f = fogAt(z0);
+    // The firefly sits behind every obstacle ahead, so front faces catch most of its light.
+    const lit = this.litAt((x0 + x1) / 2, (y0 + y1) / 2, z0);
     if (y1 < CAM_Y) {
-      this.quad(this.p(x0, y1, z0), this.p(x1, y1, z0), this.p(x1, y1, z1), this.p(x0, y1, z1), fogged(color, f, 0.18));
+      this.quad(this.p(x0, y1, z0), this.p(x1, y1, z0), this.p(x1, y1, z1), this.p(x0, y1, z1), fogged(color, f, 0.18, lit * 0.5));
     }
     // Show the side that faces the camera.
     if (x0 > this.camX) {
-      this.quad(this.p(x0, y0, z0), this.p(x0, y1, z0), this.p(x0, y1, z1), this.p(x0, y0, z1), fogged(color, f, -0.35));
+      this.quad(this.p(x0, y0, z0), this.p(x0, y1, z0), this.p(x0, y1, z1), this.p(x0, y0, z1), fogged(color, f, -0.35, lit * 0.6));
     } else if (x1 < this.camX) {
-      this.quad(this.p(x1, y0, z0), this.p(x1, y1, z0), this.p(x1, y1, z1), this.p(x1, y0, z1), fogged(color, f, -0.35));
+      this.quad(this.p(x1, y0, z0), this.p(x1, y1, z0), this.p(x1, y1, z1), this.p(x1, y0, z1), fogged(color, f, -0.35, lit * 0.6));
     }
-    this.quad(this.p(x0, y0, z0), this.p(x1, y0, z0), this.p(x1, y1, z0), this.p(x0, y1, z0), fogged(color, f));
+    this.quad(this.p(x0, y0, z0), this.p(x1, y0, z0), this.p(x1, y1, z0), this.p(x0, y1, z0), fogged(color, f, 0, lit));
   }
 
   /** Soft contact shadow on the floor. */
@@ -442,7 +551,7 @@ export class Renderer {
         const f = fogAt(o.z);
         const a = this.p(cx - half + off + 0.04, y + h * 0.3, o.z + dz);
         const b = this.p(cx + half + off - 0.03, y + h * 0.7, o.z + dz);
-        this.ctx.fillStyle = fogged('#e9dcc0', f, -0.05);
+        this.ctx.fillStyle = fogged('#e9dcc0', f, -0.05, this.litAt(cx, y, o.z));
         this.ctx.fillRect(a.x, b.y, b.x - a.x, a.y - b.y);
         y += h;
       }
@@ -453,6 +562,7 @@ export class Renderer {
       const z0 = o.z;
       const z1 = o.z + o.depth;
       const f = fogAt(z0);
+      const lit = this.litAt(cx, 0.6, z0);
       this.floorShadow(x0, x1, z0, z1, 0.5);
       // Books standing on the top shelf.
       let bx = x0 + 0.04;
@@ -479,7 +589,7 @@ export class Renderer {
           const top = yb + (yt - yb) * (0.55 + rng() * 0.4);
           const p0 = this.p(sx, top, z0);
           const p1 = this.p(Math.min(sx + w, x1 - 0.08), yb, z0);
-          this.ctx.fillStyle = fogged(pick(), f, -0.1);
+          this.ctx.fillStyle = fogged(pick(), f, -0.1, lit);
           this.ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
           sx += w + 0.012;
         }
@@ -508,6 +618,7 @@ export class Renderer {
     const f = fogAt(z0);
     const { footX, topX, topY } = ladderLine(side);
     const len = Math.hypot(topX - footX, topY);
+    const lit = this.litAt((footX + topX) / 2, 1, z0);
     // Unit vector along the ladder and its perpendicular in the x/y plane.
     const ux = (topX - footX) / len;
     const uy = topY / len;
@@ -523,11 +634,11 @@ export class Renderer {
     };
 
     // Back rail (with a darker edge for thickness), then rungs, then the front rail.
-    rail(z1 + 0.06, fogged('#5a3a20', f));
-    rail(z1, fogged('#7a4f2c', f, -0.1));
+    rail(z1 + 0.06, fogged('#5a3a20', f, 0, lit * 0.4));
+    rail(z1, fogged('#7a4f2c', f, -0.1, lit * 0.5));
 
     ctx.lineCap = 'butt';
-    ctx.strokeStyle = fogged('#a8784a', f);
+    ctx.strokeStyle = fogged('#a8784a', f, 0, lit * 0.8);
     for (let d = 0.32; d < len - 0.15; d += 0.34) {
       const x = footX + ux * d;
       const y = uy * d;
@@ -540,8 +651,8 @@ export class Renderer {
       ctx.stroke();
     }
 
-    rail(z0 + 0.06, fogged('#5a3a20', f));
-    rail(z0, fogged('#8a5a33', f));
+    rail(z0 + 0.06, fogged('#5a3a20', f, 0, lit * 0.6));
+    rail(z0, fogged('#8a5a33', f, 0, lit));
 
     // Rubber feet on the floor and brass hooks over the shelf.
     for (const z of [z0, z1]) {
@@ -619,43 +730,34 @@ export class Renderer {
   }
 
   private drawPlayer(game: Game): void {
-    const ctx = this.ctx;
-    // Shadow shrinks as the spark rises.
     const air = Math.min(1, game.jumpY / 1.1);
-    const sh = this.p(game.x, 0, 0);
-    const rx = 0.32 * sh.s * (1 - air * 0.45);
-    ctx.fillStyle = `rgba(10,4,2,${0.45 * (1 - air * 0.6)})`;
-    ctx.beginPath();
-    ctx.ellipse(sh.x, sh.y, rx, rx * 0.28, 0, 0, Math.PI * 2);
-    ctx.fill();
-
     const bob = game.onGround ? Math.sin(this.t * 6) * 0.04 : 0;
     const p = this.p(game.x, HOVER_Y + game.jumpY + bob, 0);
     const tilt = Math.max(-1, Math.min(1, (LANE_X[game.lane] - game.x) * 1.5));
     const flicker = game.invulnerableFor > 0 && Math.floor(game.invulnerableFor * 12) % 2 === 0 ? 0.35 : 1;
-    drawSpark(ctx, p.x, p.y, 0.34 * p.s, { t: this.t, tilt, air, alpha: flicker });
+    // No dark shadow: the firefly is the light source, so its pool of light is drawn on the floor instead.
+    drawFirefly(this.ctx, p.x, p.y, 0.33 * p.s, { t: this.t, tilt, air, alpha: flicker, glow: this.glow });
   }
-
   // ---------- Particles ----------
 
   private updateParticles(game: Game, dt: number): void {
-    // Emit a glowing trail behind the spark.
+    // A sparse trail of glowing motes drifting off the lantern.
     this.trailTimer += dt;
-    const interval = 1 / 45;
+    const interval = 1 / 26;
     while (this.trailTimer > interval) {
       this.trailTimer -= interval;
-      // Trail particles are mostly carried along with the spark and only slowly fall
+      // Trail particles are mostly carried along with the firefly and only slowly fall
       // behind, so they stay a compact tail instead of rushing at the camera.
       this.particles.push({
         x: game.x + (Math.random() - 0.5) * 0.16,
-        y: HOVER_Y + game.jumpY + (Math.random() - 0.5) * 0.16,
+        y: HOVER_Y + game.jumpY - 0.1 + (Math.random() - 0.5) * 0.14,
         z: -0.02,
         vx: (Math.random() - 0.5) * 0.25,
-        vy: 0.1 + Math.random() * 0.2,
-        vz: game.speed * 0.88,
-        life: 0.4,
-        maxLife: 0.4,
-        size: 0.035 + Math.random() * 0.03,
+        vy: (Math.random() - 0.35) * 0.3,
+        vz: game.speed * 0.9,
+        life: 0.7,
+        maxLife: 0.7,
+        size: 0.016 + Math.random() * 0.02,
         gold: false,
       });
     }
@@ -681,7 +783,9 @@ export class Renderer {
       const p = this.p(pt.x, pt.y, pt.z);
       // Cap the size so particles near the camera don't balloon.
       const r = Math.max(0.5, Math.min(pt.size * p.s, pt.size * 1.4 * this.p(0, 0, 0).s) * (0.35 + k * 0.65));
-      ctx.fillStyle = pt.gold ? `rgba(255,214,120,${k})` : `rgba(255,140,85,${k * 0.7})`;
+      // Firefly motes twinkle as they fade.
+      const twinkle = 0.55 + 0.45 * Math.sin(pt.life * 26 + pt.size * 400);
+      ctx.fillStyle = pt.gold ? `rgba(255,214,120,${k})` : `rgba(${FIREFLY_LIGHT.join(',')},${k * 0.85 * twinkle})`;
       ctx.beginPath();
       ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
       ctx.fill();
