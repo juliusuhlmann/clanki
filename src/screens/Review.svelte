@@ -193,5 +193,5 @@
 </div>
 
 {#if playing}
-  <RunnerGame seconds={run.seconds} earned={run.earned} onfinish={endRun} />
+  <RunnerGame seconds={run.seconds} onfinish={endRun} />
 {/if}

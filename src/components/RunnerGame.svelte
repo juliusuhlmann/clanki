@@ -3,19 +3,15 @@
   import { Game } from '../game/engine';
   import { Renderer } from '../game/render';
   import { InputController } from '../game/input';
-  import { MAX_SECONDS } from '../game/reward';
   import { getSetting, setSetting } from '../lib/db';
 
   let {
     seconds,
-    earned,
     practice = false,
     onfinish,
   }: {
     /** Length of the run. */
     seconds: number;
-    /** Seconds earned by the cards since the last run (for the intro). */
-    earned: number;
     /** A free run started from the deck list rather than earned by studying. */
     practice?: boolean;
     onfinish: () => void;
@@ -131,28 +127,10 @@
   <canvas bind:this={canvas}></canvas>
 
   {#if phase === 'intro'}
-    <div class="overlay">
-      <div class="sheet">
-        <p class="kicker">{practice ? 'Practice' : 'Break time'}</p>
-        <h2>Library run</h2>
-        <p class="time">{seconds}s</p>
-        <p class="muted small">
-          {#if practice}
-            A free practice run. During study, runs come every 6–10 cards.
-          {:else if earned === 0}
-            15s base. Answer Good or Easy to earn more.
-          {:else if seconds >= MAX_SECONDS && 15 + earned > MAX_SECONDS}
-            {earned}s earned by your answers – that's the {MAX_SECONDS}s maximum!
-          {:else}
-            15s base + {earned}s earned by your answers
-          {/if}
-        </p>
-        <p class="muted small controls">{hint}</p>
-        <div class="buttons">
-          <button class="btn primary big" onclick={start}>Start</button>
-          <button class="btn" onclick={onfinish}>Skip</button>
-        </div>
-      </div>
+    <!-- Just "Ready?" over the corridor: tap it to fly, or skip. The controls hint shows in-game. -->
+    <div class="overlay ready">
+      <button class="ready-btn" onclick={start}>Ready?</button>
+      <button class="skip-btn" onclick={onfinish}>Skip</button>
     </div>
   {:else if phase === 'results'}
     <div class="overlay">
@@ -197,6 +175,58 @@
     background: radial-gradient(ellipse at center, rgba(20, 12, 7, 0.25), rgba(20, 12, 7, 0.7));
   }
 
+  .overlay.ready {
+    flex-direction: column;
+    gap: 1.1rem;
+    background: radial-gradient(ellipse at center, rgba(20, 12, 7, 0.1), rgba(20, 12, 7, 0.55));
+  }
+
+  /* A lamp-lit word rather than a button box. */
+  .ready-btn {
+    padding: 0.4rem 1.6rem;
+    font-family: var(--serif);
+    font-size: 2.6rem;
+    font-weight: 600;
+    color: #fff3dc;
+    background: radial-gradient(ellipse closest-side, rgba(255, 210, 130, 0.22), transparent);
+    border: 0;
+    cursor: pointer;
+    text-shadow: 0 0 24px rgba(255, 210, 130, 0.55);
+    animation: ready-glow 2.4s ease-in-out infinite;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ready-btn:active {
+    transform: scale(0.96);
+  }
+
+  .skip-btn {
+    padding: 0.5rem 1rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(244, 237, 228, 0.6);
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .skip-btn:hover {
+    color: #f4ede4;
+  }
+
+  @keyframes ready-glow {
+    0%,
+    100% {
+      text-shadow: 0 0 18px rgba(255, 210, 130, 0.4);
+    }
+    50% {
+      text-shadow: 0 0 30px rgba(255, 210, 130, 0.75);
+    }
+  }
+
   .sheet {
     width: min(100%, 22rem);
     padding: 1.75rem 1.5rem 1.5rem;
@@ -233,19 +263,6 @@
     margin: 0.3rem 0 0.25rem;
     font-size: 2.1rem;
     color: #fff8ef;
-  }
-
-  .time {
-    margin: 0.1rem 0 0.4rem;
-    font-family: var(--serif);
-    font-size: 2.8rem;
-    font-weight: 600;
-    line-height: 1.1;
-    color: #f2c35b;
-  }
-
-  .controls {
-    margin-top: 0.75rem;
   }
 
   .best {

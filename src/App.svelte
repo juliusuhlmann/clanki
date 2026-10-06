@@ -49,6 +49,6 @@
   {:else if router.route.name === 'settings'}
     <Settings />
   {:else if router.route.name === 'practiceRun'}
-    <RunnerGame seconds={30} earned={0} practice onfinish={() => navigate({ name: 'decks' })} />
+    <RunnerGame seconds={30} practice onfinish={() => navigate({ name: 'decks' })} />
   {/if}
 </main>
