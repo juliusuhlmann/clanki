@@ -18,8 +18,8 @@ const GRAVITY = 17;
 const DROP_VELOCITY = 7; // from the top of a jump: ~0.14s to land (gravity alone: ~0.36s)
 const LANE_SWITCH_RATE = 16;
 
-const START_SPEED = 14;
-const MAX_EXTRA_SPEED = 18; // top speed 32 m/s
+const START_SPEED = 17;
+const MAX_EXTRA_SPEED = 21; // top speed 38 m/s
 const SPEED_RAMP_SECONDS = 18;
 const ATTRACT_SPEED = 5;
 export const START_HEARTS = 2;
@@ -29,11 +29,7 @@ const FIRST_ROW_SECONDS = 2;
 /** Seconds into a run before rolling carts, reading tables and falling books appear. */
 const VARIETY_AFTER = 3;
 
-// Letters give a speed burst: +35% that fades out over 4 seconds. Another letter
-// refills it rather than stacking, so top speed stays bounded (rows stay ≥ ~0.6s apart).
-// The extra speed also covers extra distance, which is the score.
-export const BOOST_GAIN = 0.35;
-export const BOOST_SECONDS = 4;
+// Letters are collectibles: the score is how many you collect in a run.
 /** Half thickness of a ladder rail, for collisions. */
 const LADDER_HALF_THICKNESS = 0.06;
 
@@ -91,8 +87,8 @@ export class Game {
   /** Total distance travelled; drives floor/shelf scrolling. */
   distance = 0;
   hearts = START_HEARTS;
-  /** 0..1, remaining speed boost from the last letter. */
-  boost = 0;
+  /** Letters collected this run; this is the score. */
+  collected = 0;
   invulnerableFor = 0;
   /** 0..1, how strongly to flash the screen after a hit. */
   flash = 0;
@@ -108,7 +104,6 @@ export class Game {
 
   private spawner: Spawner;
   private untilNextRow = 0;
-  private runDistance = 0;
   private rng: () => number;
 
   constructor(seed = Date.now()) {
@@ -116,9 +111,9 @@ export class Game {
     this.spawner = new Spawner(this.rng);
   }
 
-  /** Score is simply the distance covered; boosts help by covering more ground. */
+  /** The score: letters collected this run. */
   get score(): number {
-    return Math.floor(this.runDistance);
+    return this.collected;
   }
 
   get onGround(): boolean {
@@ -132,8 +127,7 @@ export class Game {
     this.elapsed = 0;
     this.speed = START_SPEED;
     this.hearts = START_HEARTS;
-    this.boost = 0;
-    this.runDistance = 0;
+    this.collected = 0;
     this.obstacles = [];
     this.letters = [];
     this.endReason = null;
@@ -164,15 +158,11 @@ export class Game {
     const events: GameEvent[] = [];
     if (this.mode === 'run') for (const a of actions) this.act(a);
 
-    // Speed: ramps up during a run (plus any letter boost), coasts to a stop after it.
+    // Speed: ramps up during a run, coasts to a stop after it.
     if (this.mode === 'run') {
       this.elapsed += dt;
-      this.boost = Math.max(0, this.boost - dt / BOOST_SECONDS);
-      const base = START_SPEED + MAX_EXTRA_SPEED * (1 - Math.exp(-this.elapsed / SPEED_RAMP_SECONDS));
-      const eased = this.boost * this.boost * (3 - 2 * this.boost); // smoothstep: gentle fade-out
-      this.speed = base * (1 + BOOST_GAIN * eased);
+      this.speed = START_SPEED + MAX_EXTRA_SPEED * (1 - Math.exp(-this.elapsed / SPEED_RAMP_SECONDS));
     } else if (this.mode === 'over') {
-      this.boost = 0;
       this.speed = Math.max(0, this.speed - this.speed * 3 * dt);
     } else {
       this.speed = ATTRACT_SPEED;
@@ -205,7 +195,6 @@ export class Game {
 
     if (this.mode !== 'run') return events;
 
-    this.runDistance += dz;
     this.timeLeft = Math.max(0, this.timeLeft - dt);
 
     // Spawn new rows.
@@ -256,7 +245,7 @@ export class Game {
       const lx = LANE_X[l.lane];
       if (Math.abs(lx - this.x) < 0.5 && Math.abs(l.z) < 0.6 && Math.abs(l.y - centerY) < 0.6) {
         l.taken = true;
-        this.boost = 1;
+        this.collected++;
         events.push({ type: 'collect', x: lx, y: l.y, z: l.z });
       }
     }

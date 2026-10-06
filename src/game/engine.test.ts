@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOOST_GAIN, BOOST_SECONDS, Game, LANE_X, START_HEARTS, type Action, type GameEvent } from './engine';
+import { Game, LANE_X, START_HEARTS, type Action, type GameEvent } from './engine';
 import { CART_HEIGHT, LADDER_TOP_Y, PILE_HEIGHT, TABLE_BASE, TABLE_DEPTH, TABLE_HEIGHT } from './spawner';
 
 const DT = 1 / 60;
@@ -155,38 +155,30 @@ describe('Game', () => {
 
   it('ends when hearts reach zero', () => {
     const game = emptyGame();
-    for (let i = 0; i < START_HEARTS; i++) addObstacle(game, 'cart', 1, 4 + i * 20);
+    for (let i = 0; i < START_HEARTS; i++) addObstacle(game, 'cart', 1, 4 + i * 35);
     const events = simulate(game, 8);
     expect(game.hearts).toBe(0);
     expect(events).toContainEqual({ type: 'end', reason: 'hearts' });
   });
 
-  it('a letter gives a speed boost that fades out', () => {
-    const boosted = emptyGame();
+  it('collecting a letter adds to the score and does not change speed', () => {
+    const game = emptyGame();
     const plain = emptyGame();
-    boosted.letters.push({ lane: 1, z: 2, y: 0.5, char: 'C', taken: false, phase: 0 });
+    game.letters.push({ lane: 1, z: 2, y: 0.5, char: 'C', taken: false, phase: 0 });
     plain.letters.push({ lane: 0, z: 2, y: 0.5, char: 'C', taken: false, phase: 0 });
-    simulate(boosted, 0.3);
-    simulate(plain, 0.3);
-    expect(boosted.boost).toBeGreaterThan(0.85);
-    expect(boosted.speed / plain.speed).toBeGreaterThan(1 + BOOST_GAIN * 0.85);
-    expect(boosted.speed / plain.speed).toBeLessThanOrEqual(1 + BOOST_GAIN + 1e-9);
-
-    simulate(boosted, BOOST_SECONDS);
-    simulate(plain, BOOST_SECONDS);
-    expect(boosted.boost).toBe(0);
-    expect(boosted.speed).toBeCloseTo(plain.speed);
-    expect(boosted.score).toBeGreaterThan(plain.score);
+    const events = simulate(game, 0.5);
+    simulate(plain, 0.5);
+    expect(events.some((e) => e.type === 'collect')).toBe(true);
+    expect(game.score).toBe(1);
+    expect(plain.score).toBe(0);
+    expect(game.speed).toBeCloseTo(plain.speed);
   });
 
-  it('a second letter refills the boost instead of stacking', () => {
+  it('counts each letter once', () => {
     const game = emptyGame();
-    game.letters.push({ lane: 1, z: 2, y: 0.5, char: 'C', taken: false, phase: 0 });
-    game.letters.push({ lane: 1, z: 3, y: 0.5, char: 'L', taken: false, phase: 0 });
-    const base = emptyGame();
-    simulate(game, 0.5);
-    simulate(base, 0.5);
-    expect(game.speed / base.speed).toBeLessThanOrEqual(1 + BOOST_GAIN + 1e-9);
+    for (let i = 0; i < 3; i++) game.letters.push({ lane: 1, z: 2 + i * 2, y: 0.5, char: 'C', taken: false, phase: 0 });
+    simulate(game, 1.5);
+    expect(game.score).toBe(3);
   });
 
   describe('leaning ladder (on the left wall)', () => {

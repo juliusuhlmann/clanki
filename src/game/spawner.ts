@@ -124,9 +124,9 @@ export function createRng(seed: number): () => number {
   };
 }
 
-/** Minimum distance between rows: about 0.7s, still enough to cross two lanes at this speed. */
+/** Minimum distance between rows: about 0.6s, still enough to cross two lanes at this speed. */
 export function minGap(speed: number): number {
-  return Math.max(6.5, speed * 0.7);
+  return Math.max(6, speed * 0.6);
 }
 
 type Pattern = 'pile' | 'pair' | 'ladder' | 'letters' | 'rollingCart' | 'table' | 'books';

@@ -31,12 +31,12 @@
   let resultsAt = 0;
 
   const touch = matchMedia('(pointer: coarse)').matches;
-  const hint = touch ? 'Swipe to dodge · tap to jump · letters = boost' : '← → dodge · ↑ / Space jump · letters = boost';
+  const hint = touch ? 'Swipe to dodge · tap to jump · collect letters' : '← → dodge · ↑ / Space jump · collect letters';
 
   onMount(() => {
     game = new Game();
     const renderer = new Renderer(canvas);
-    getSetting('runnerBest', 0).then((v) => (best = v));
+    getSetting('runnerBestLetters', 0).then((v) => (best = v));
 
     const resize = () => {
       const rect = container.getBoundingClientRect();
@@ -103,7 +103,7 @@
     if (score > best) {
       newBest = best > 0;
       best = score;
-      await setSetting('runnerBest', score);
+      await setSetting('runnerBestLetters', score);
     }
     resultsAt = performance.now();
     phase = 'results';
@@ -136,9 +136,9 @@
     <div class="overlay">
       <div class="sheet">
         <p class="kicker">{endReason === 'hearts' ? 'Out of hearts' : "Time's up"}</p>
-        <h2>{score} m</h2>
-        <p class="muted small">through the library</p>
-        <p class="best">{newBest ? '✦ New best!' : `Best: ${best} m`}</p>
+        <h2>{score}</h2>
+        <p class="muted small">{score === 1 ? 'letter' : 'letters'} collected</p>
+        <p class="best">{newBest ? '✦ New best!' : `Best: ${best}`}</p>
         <div class="buttons">
           <button class="btn primary big" onclick={onfinish}>{practice ? 'Done' : 'Back to cards'}</button>
         </div>

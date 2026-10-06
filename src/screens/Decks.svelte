@@ -12,7 +12,7 @@
     return Promise.all(all.map(async (deck) => ({ deck, counts: await deckCounts(deck.id, now) })));
   });
   const best = liveQuery(async () => {
-    const row = await db.settings.get('runnerBest');
+    const row = await db.settings.get('runnerBestLetters');
     return typeof row?.value === 'number' ? row.value : 0;
   });
 
@@ -203,7 +203,7 @@
     <div class="lamp-pool"></div>
     <span class="lamp-label">
       <span class="lamp-title">Library run</span>
-      <span class="lamp-best">{$best ? `Best ${$best} m` : 'Start a run'}</span>
+      <span class="lamp-best">{$best ? `Best: ${$best} letters` : 'Start a run'}</span>
     </span>
   </a>
 </div>

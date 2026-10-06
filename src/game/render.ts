@@ -90,6 +90,8 @@ export class Renderer {
   private lightX = 0;
   private lightY = HOVER_Y;
   private glow = 1;
+  /** 0..1, a brief flare of the lantern after collecting a letter. */
+  private flare = 0;
 
   private shelves = makeShelfTextures(6);
   private letterSprites = new Map<string, HTMLCanvasElement>();
@@ -140,6 +142,7 @@ export class Renderer {
 
   /** Visual-only effect when a letter is collected. */
   burst(x: number, y: number, z: number): void {
+    this.flare = 1;
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * Math.PI * 2;
       this.particles.push({
@@ -164,7 +167,8 @@ export class Renderer {
     this.lightX = game.x;
     this.lightY = HOVER_Y + game.jumpY;
     // A slow breathing pulse; letters make the lantern flare.
-    this.glow = 0.9 + 0.1 * Math.sin(this.t * 2.6) + game.boost * 0.35;
+    this.flare = Math.max(0, this.flare - dt * 2.5);
+    this.glow = 0.9 + 0.1 * Math.sin(this.t * 2.6) + this.flare * 0.35;
     const ctx = this.ctx;
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
@@ -181,7 +185,6 @@ export class Renderer {
     this.updateParticles(game, dt);
     this.drawObjects(game);
     this.drawDust(dt);
-    if (game.boost > 0) this.drawSpeedLines(game.boost);
 
     if (this.vignette) ctx.drawImage(this.vignette, 0, 0, this.w, this.h);
     if (game.flash > 0) {
@@ -993,31 +996,6 @@ export class Renderer {
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  /** Warm streaks rushing out from the vanishing point while boosted. */
-  private drawSpeedLines(boost: number): void {
-    const ctx = this.ctx;
-    const vx = this.cx;
-    const vy = this.hy;
-    const maxR = Math.hypot(this.w, this.h);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.lineCap = 'round';
-    for (let i = 0; i < 28; i++) {
-      const angle = (i / 28) * Math.PI * 2;
-      // Each streak travels outward; phase offsets keep them staggered.
-      const phase = (this.t * 2.2 + (hash(i * 7) % 1000) / 1000) % 1;
-      const r0 = maxR * (0.15 + phase * 0.55);
-      const r1 = r0 + maxR * (0.06 + phase * 0.12);
-      const a = boost * 0.5 * Math.sin(phase * Math.PI);
-      ctx.strokeStyle = `rgba(255,214,150,${a})`;
-      ctx.lineWidth = 1.5 + phase * 2.5;
-      ctx.beginPath();
-      ctx.moveTo(vx + Math.cos(angle) * r0, vy + Math.sin(angle) * r0);
-      ctx.lineTo(vx + Math.cos(angle) * r1, vy + Math.sin(angle) * r1);
-      ctx.stroke();
-    }
-    ctx.globalCompositeOperation = 'source-over';
-  }
-
   // ---------- HUD ----------
 
   private drawHud(game: Game): void {
@@ -1050,15 +1028,18 @@ export class Renderer {
       this.heart(pad + 12 + i * 28, rowY, 10, i < game.hearts);
     }
 
-    // Time left and distance in metres (the unit in a softer colour).
+    // Time left, and letters collected next to a small gold letter.
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f3eee8';
     ctx.fillText(`${Math.ceil(game.timeLeft)}s`, this.w / 2, rowY);
     ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(243,238,232,0.6)';
-    ctx.fillText('m', this.w - pad, rowY);
-    ctx.fillStyle = game.boost > 0 ? '#f2c35b' : '#f3eee8';
-    ctx.fillText(`${game.score}`, this.w - pad - ctx.measureText('m').width - 4, rowY);
+    const count = `${game.score}`;
+    ctx.fillStyle = this.flare > 0 ? '#ffe7a3' : '#f3eee8';
+    ctx.fillText(count, this.w - pad, rowY);
+    const countW = ctx.measureText(count).width;
+    ctx.font = '700 17px Georgia, "Times New Roman", serif';
+    ctx.fillStyle = '#f2c35b';
+    ctx.fillText('A', this.w - pad - countW - 6, rowY + 1);
   }
 
   private drawHint(text: string, alpha: number): void {

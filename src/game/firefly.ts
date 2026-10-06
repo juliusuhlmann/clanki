@@ -10,7 +10,7 @@ export interface FireflyPose {
   air: number;
   /** 0..1, flicker while invulnerable. */
   alpha: number;
-  /** Lantern brightness, ~1 normally, higher while boosted. */
+  /** Lantern brightness, ~1 normally, flaring briefly after a letter. */
   glow: number;
   /** Size of the outer halo (1 = in-game; smaller for UI icons). */
   halo?: number;
