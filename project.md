@@ -23,7 +23,11 @@ Front and back are plain text (line breaks kept) with two additions, rendered by
 - **Images**: `![alt text](src)` with `src` either `https://…` (needs internet) or `data:image/png|jpeg|gif|webp|svg+xml;base64,…` (stored in the card, works offline; keep them small, as they live in IndexedDB and in backups). Other sources are shown as plain text. Images are capped at 40% of the screen height on the card and thumbnail size in the deck list; search only sees the alt text
 - One line break directly before/after display maths or an image is dropped, since those are blocks already
 - Everything else is HTML-escaped, so card text can't inject markup or scripts
-- Generated cards can be brought in with Settings → Import (a backup-format JSON file)
+- Generated cards go into deck files in `decks/` (see below)
+
+### Deck files in the repo
+
+Agents create cards by writing `decks/<module>.json` (format in `decks/README.md`), running `npm test`, and committing + pushing. The files are bundled into the app (lazy chunks, precached, so offline too); on start `syncRepoDecks()` (`src/lib/repoDecks.ts`) merges every file whose content changed since the last sync: new cards are added in file order, changed text is updated with review progress kept, and cards no longer in the file are deleted. App ids are `repo-<deck id>` and `repo-<deck id>:<card id>`, so every device ends up with the same ids. Tests validate every file, so an invalid one blocks the deploy. The repo is public, so these cards are publicly readable.
 
 ## The game
 
@@ -76,7 +80,7 @@ _TODO_
 
 - Everything is stored on the device in IndexedDB (Dexie), in `src/lib/db.ts`: tables `decks`, `cards` (FSRS state + indexed `due`), `reviews` (an append-only log of every answer, for future exam mode, stats and the leech boss) and `settings`
 - Backup: Settings → Export downloads `clanki-backup-YYYY-MM-DD.json`; Import merges it (new items added, the newer `updatedAt` wins, reviews deduplicated) after showing a summary
-- Moving cards between laptop and phone currently means export on one device and import on the other
+- Cards from `decks/` reach every device with the app itself. Cards made by hand and review progress stay per device: moving them means export on one device and import on the other
 - Known limitation: deletions don't sync. Importing an older backup brings deleted cards back
 
 ## Roadmap
