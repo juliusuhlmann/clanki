@@ -49,7 +49,7 @@ _TODO_
 - Warm ivory light mode / warm charcoal dark mode (follows the system), lantern gold `#e9b84f` (the run meter and lamp colour, dark text on it) only for primary actions; a darker gold `--accent-text` for gold text in light mode
 - Serif headings (Source Serif 4, bundled for offline use), system sans for UI text, soft 1px borders
 - The firefly is the mascot: `src/components/Firefly.svelte` draws the game's firefly (same code) as a still icon for the header logo, the library-run tile and empty states. `src/components/Orb.svelte` is its glowing lantern as a sphere
-- App icon: a glowing lime sphere on a warm dark-brown tile (`public/icons/`; the PNGs are generated with System.Drawing, full-bleed so they work as maskable icons)
+- App icon: a glowing lime sphere on a warm dark-brown tile (`public/icons/`, PNGs generated with System.Drawing): `icon-maskable-*.png` are full-bleed for Android and the apple-touch-icon; `icon-192/512.png` have rounded transparent corners (radius 112/512, as in `icon.svg`) for desktop installs
 - Game ties: a meter with the glowing orb shows progress (toward the next run in a library run, through the deck when studying); a dark "library run" lamp tile on the home screen
 
 ## Tech stack
