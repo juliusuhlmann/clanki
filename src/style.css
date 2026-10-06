@@ -12,12 +12,13 @@
   --muted: #6f6b62;
   --faint: #9b978c;
 
-  /* Lantern gold, the same as the run meter; dark text sits on it */
-  --accent: #e9b84f;
-  --accent-strong: #dba53a;
-  --accent-soft: rgba(233, 184, 79, 0.25);
-  /* Gold for text and outlines; darker in light mode so it stays readable */
-  --accent-text: #9a6a12;
+  /* The firefly's lantern (FIREFLY_COLOR in src/game/firefly.ts); dark text sits on it.
+     A little deeper here so buttons still stand out on the light background. */
+  --accent: #dfe86a;
+  --accent-strong: #d0db4f;
+  --accent-soft: rgba(228, 240, 130, 0.35);
+  /* Lantern colour for text and outlines; a dark olive in light mode so it stays readable */
+  --accent-text: #6b7210;
   --on-accent: #2a1d0c;
 
   --due: #3f7d58;
@@ -57,9 +58,11 @@
     --muted: #aaa69b;
     --faint: #7f7b72;
 
-    --accent-strong: #f2c35b;
-    --accent-soft: rgba(233, 184, 79, 0.22);
-    --accent-text: #f2c35b;
+    /* The lantern exactly, brightening on hover. */
+    --accent: #e6f07a;
+    --accent-strong: #f2f8a6;
+    --accent-soft: rgba(228, 240, 130, 0.22);
+    --accent-text: #e6f07a;
 
     --due: #84c49a;
     --new: #8db4e6;

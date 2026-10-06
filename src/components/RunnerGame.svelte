@@ -189,7 +189,7 @@
     background: var(--accent);
     border: 0;
     border-radius: var(--radius);
-    box-shadow: 0 8px 28px rgba(233, 184, 79, 0.4);
+    box-shadow: 0 8px 28px rgba(228, 240, 130, 0.35);
     cursor: pointer;
     transition: transform 0.12s, background 0.15s;
     -webkit-tap-highlight-color: transparent;
