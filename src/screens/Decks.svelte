@@ -4,6 +4,7 @@
   import { deckCounts, libraryRunSize } from '../lib/scheduler';
   import { createDeck, renameDeck, deleteDeck } from '../lib/store';
   import { href } from '../lib/router.svelte';
+  import FlyingFirefly from '../components/FlyingFirefly.svelte';
 
   // Re-runs whenever the decks, cards, reviews or settings it reads change.
   const decks = liveQuery(async () => {
@@ -17,6 +18,13 @@
   const greeting = hour < 5 ? 'Burning the midnight oil' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   const totalToday = $derived(($decks ?? []).reduce((sum, d) => sum + d.counts.due + d.counts.new, 0));
+
+  // The glow under the firefly follows it; set straight on the element, as it changes every frame.
+  let runTile: HTMLAnchorElement | undefined = $state();
+  function lightFollows(x: number, glow: number) {
+    runTile?.style.setProperty('--fx', x.toFixed(3));
+    runTile?.style.setProperty('--glow', glow.toFixed(3));
+  }
 
   let adding = $state(false);
   let newName = $state('');
@@ -140,67 +148,14 @@
   </button>
 {/if}
 
-<!-- The library run: a lamp over a shelf at the bottom; the deck list scrolls behind it. -->
-<div class="lamp-dock">
-  <div class="lamp-shelf"></div>
-  <a class="lamp-run" href={href({ name: 'libraryRun' })} aria-label="Library run">
-    <div class="lamp-swing">
-      <div class="lamp-cone"></div>
-      <svg class="lamp-svg" viewBox="0 0 100 80" aria-hidden="true">
-        <defs>
-          <linearGradient id="lamp-cord" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#3a2a1e" stop-opacity="0" />
-            <stop offset="1" stop-color="#3a2a1e" />
-          </linearGradient>
-          <!-- Polished brass: dark edges, a bright band left of centre. -->
-          <linearGradient id="lamp-brass" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stop-color="#4f3512" />
-            <stop offset="0.3" stop-color="#e9c877" />
-            <stop offset="0.45" stop-color="#b98d3c" />
-            <stop offset="0.8" stop-color="#7a5620" />
-            <stop offset="1" stop-color="#3f2a0e" />
-          </linearGradient>
-          <linearGradient id="lamp-shadow" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#1c1208" stop-opacity="0.45" />
-            <stop offset="0.6" stop-color="#1c1208" stop-opacity="0" />
-          </linearGradient>
-          <!-- The lit inside of the shade, seen from slightly below. -->
-          <radialGradient id="lamp-inside" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stop-color="#fffaf0" />
-            <stop offset="0.35" stop-color="#ffe2a6" />
-            <stop offset="1" stop-color="#c98a35" />
-          </radialGradient>
-          <radialGradient id="lamp-halo">
-            <stop offset="0" stop-color="#ffd98f" stop-opacity="0.55" />
-            <stop offset="1" stop-color="#ffd98f" stop-opacity="0" />
-          </radialGradient>
-        </defs>
-        <circle cx="50" cy="58" r="34" fill="url(#lamp-halo)" />
-        <rect x="49.2" y="-14" width="1.6" height="36" fill="url(#lamp-cord)" />
-        <!-- Fitting: a small cap and collar. -->
-        <rect x="45.5" y="20" width="9" height="6" rx="2" fill="url(#lamp-brass)" />
-        <rect x="43.5" y="25" width="13" height="2.4" rx="1.2" fill="#8a6528" />
-        <!-- The flared bell shade. -->
-        <path
-          d="M50 26.5 C44.5 26.5 41.5 27.8 40.5 30.5 L16 55.5 L84 55.5 L59.5 30.5 C58.5 27.8 55.5 26.5 50 26.5 Z"
-          fill="url(#lamp-brass)"
-        />
-        <path
-          d="M50 26.5 C44.5 26.5 41.5 27.8 40.5 30.5 L16 55.5 L84 55.5 L59.5 30.5 C58.5 27.8 55.5 26.5 50 26.5 Z"
-          fill="url(#lamp-shadow)"
-        />
-        <!-- Specular streak on the brass. -->
-        <path d="M40.5 33 L26 49" stroke="#fff3d0" stroke-opacity="0.55" stroke-width="1.6" fill="none" stroke-linecap="round" />
-        <!-- Glowing inside and the rolled rim. -->
-        <ellipse cx="50" cy="56" rx="34" ry="4.4" fill="url(#lamp-inside)" />
-        <ellipse cx="50" cy="56" rx="34" ry="4.4" fill="none" stroke="#d6ae5c" stroke-width="1.3" />
-        <ellipse cx="50" cy="55.6" rx="8" ry="2.2" fill="#ffffff" />
-      </svg>
-    </div>
-    <div class="lamp-pool"></div>
-    <span class="lamp-label">
-      <span class="lamp-title">Library run</span>
-      <span class="lamp-best">
+<!-- The library run: a firefly hovering at the bottom of the screen; the deck list scrolls behind it. -->
+<div class="run-dock">
+  <a class="run-tile" href={href({ name: 'libraryRun' })} aria-label="Library run" bind:this={runTile}>
+    <div class="run-air"><FlyingFirefly size={34} onmove={lightFollows} /></div>
+    <div class="run-pool"></div>
+    <span class="run-label">
+      <span class="run-title">Library run</span>
+      <span class="run-best">
         {#if totalToday > 0}
           {libraryRunSize(totalToday)} cards{$best ? ` · Best: ${$best}` : ''}
         {:else}

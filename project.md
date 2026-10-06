@@ -42,12 +42,12 @@ Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
 - 2 hearts; a hit costs a heart, flashes the screen and vibrates the phone; the run ends when time or hearts run out
 - Every runner run is 30s and skippable (counts 0 letters). The game never affects scheduling
 
-Library run flow (`src/screens/LibraryRun.svelte`, `#/library`, started from the lamp tile on the home screen):
+Library run flow (`src/screens/LibraryRun.svelte`, `#/library`, started from the firefly tile on the home screen):
 - Cards come from all decks (`buildLibraryQueue`): due cards first, then new ones within each deck's daily limit, shuffled
 - Size from the cards left today, n: all of them if n < 18, half (rounded up) if 18 ≤ n < 24, otherwise 12 (`libraryRunSize`)
 - Three blocks as even as possible (`splitBlocks`, e.g. 4/4/4) with a runner run after the first two: cards → run → cards → run → cards
 - Only cards answered "Again" come back within a library run (2-minute learn-ahead), so the blocks stay even; longer learning steps wait for a later session
-- Letters from both runs add up. Finished runs are stored in the `libraryRuns` table (not in backups); the summary shows the rank and the top 10, and the lamp shows the best
+- Letters from both runs add up. Finished runs are stored in the `libraryRuns` table (not in backups); the summary shows the rank and the top 10, and the home tile shows the best
 - Studying a single deck (`Review.svelte`) has no runs, just a progress bar with the cards left
 - Settings → "Test the run" (`#/run`) starts a single 30s run that isn't recorded
 - Dev only: `window.__runner` exposes `{ game, paused }` for inspection
@@ -59,11 +59,11 @@ _TODO_
 ## Design
 
 "Reading room", Claude-desktop-like, in `src/style.css`:
-- Warm ivory light mode / warm charcoal dark mode (follows the system), lantern gold `#e9b84f` (the run meter and lamp colour, dark text on it) only for primary actions; a darker gold `--accent-text` for gold text in light mode
+- Warm ivory light mode / warm charcoal dark mode (follows the system), lantern gold `#e9b84f` (the run meter colour, dark text on it) only for primary actions; a darker gold `--accent-text` for gold text in light mode
 - Serif headings (Source Serif 4, bundled for offline use), system sans for UI text, soft 1px borders
 - The firefly is the mascot: `src/components/Firefly.svelte` draws the game's firefly (same code) as a still icon for the header logo, the library-run tile and empty states. `src/components/Orb.svelte` is its glowing lantern as a sphere
 - App icon: a glowing lime sphere on a warm dark-brown tile (`public/icons/`, PNGs generated with System.Drawing): `icon-maskable-*.png` are full-bleed for Android and the apple-touch-icon; `icon-192/512.png` have rounded transparent corners (radius 112/512, as in `icon.svg`) for desktop installs
-- Game ties: a meter with the glowing orb shows progress (toward the next run in a library run, through the deck when studying); a dark "library run" lamp tile on the home screen
+- Game ties: a meter with the glowing orb shows progress (toward the next run in a library run, through the deck when studying); the "library run" tile at the bottom of the home screen: the game's firefly hovering above the label (`FlyingFirefly.svelte`, drawn with the game's code; it drifts on overlapping slow sine waves, leans into its motion and blinks now and then; the glow it casts below follows it; still with reduced motion)
 
 ## Tech stack
 

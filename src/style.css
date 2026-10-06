@@ -12,7 +12,7 @@
   --muted: #6f6b62;
   --faint: #9b978c;
 
-  /* Lantern gold, the same as the run meter and the lamp; dark text sits on it */
+  /* Lantern gold, the same as the run meter; dark text sits on it */
   --accent: #e9b84f;
   --accent-strong: #dba53a;
   --accent-soft: rgba(233, 184, 79, 0.25);
@@ -530,10 +530,10 @@ kbd {
 
 /* ---------- Home: library run tile ---------- */
 
-/* The library run: a brass lamp hanging over a thin shelf at the bottom of the screen.
-   Its light falls onto the shelf, and the run's name and your best distance sit in the
-   pool of light. The whole lamp is the button. */
-.lamp-dock {
+/* The library run: a firefly hovering at the bottom of the screen. The glow it casts below
+   follows it (--fx and --glow, set from FlyingFirefly); the run's name and
+   your best sit below it. The whole area is the button. */
+.run-dock {
   position: fixed;
   inset: auto 0 0;
   z-index: 5;
@@ -541,28 +541,18 @@ kbd {
   pointer-events: none;
 }
 
-/* The deck list fades out behind the lamp instead of running into it. */
-.lamp-dock::before {
+/* The deck list fades out behind the tile instead of running into it. */
+.run-dock::before {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(to top, var(--bg) 62%, transparent);
 }
 
-.lamp-shelf {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(0.85rem + env(safe-area-inset-bottom));
-  height: 7px;
-  background: linear-gradient(180deg, #9a6a3e, #6a4224 70%, #4a2c16);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-}
-
-.lamp-run {
+.run-tile {
   position: absolute;
   left: 50%;
-  bottom: calc(0.85rem + 7px + env(safe-area-inset-bottom));
+  bottom: calc(0.85rem + env(safe-area-inset-bottom));
   width: 16rem;
   height: 9.9rem;
   transform: translateX(-50%);
@@ -570,52 +560,30 @@ kbd {
   text-decoration: none;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
+  --fx: 0.5;
+  --glow: 1;
 }
 
-/* Lamp and light cone sway together, gently, from the top of the cord. */
-.lamp-swing {
+/* Where the firefly flies: above the label. */
+.run-air {
   position: absolute;
-  inset: 0;
-  transform-origin: 50% 0;
-  animation: lamp-sway 6s ease-in-out infinite;
-}
-
-.lamp-svg {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 110px;
-  height: 88px;
-  transform: translateX(-50%);
-  overflow: visible;
-}
-
-.lamp-cone {
-  position: absolute;
-  /* Starts at the shade's rim (75px wide) and widens down to the shelf. */
-  top: 61px;
-  left: 50%;
-  width: 15rem;
-  bottom: 0;
-  transform: translateX(-50%);
-  clip-path: polygon(calc(50% - 37px) 0, calc(50% + 37px) 0, 100% 100%, 0 100%);
-  background: linear-gradient(180deg, rgba(255, 218, 150, 0.42), rgba(255, 214, 140, 0.16) 45%, rgba(255, 214, 140, 0.06));
-  filter: blur(4px);
+  inset: 0 0 3.4rem;
   transition: filter 0.2s;
 }
 
-/* Pool of light where the cone meets the shelf. */
-.lamp-pool {
+/* The glow it casts below, under wherever it is. */
+.run-pool {
   position: absolute;
-  left: 50%;
+  left: calc(var(--fx) * 100%);
   bottom: -9px;
-  width: 15rem;
-  height: 30px;
+  width: 9rem;
+  height: 26px;
   transform: translateX(-50%);
-  background: radial-gradient(ellipse closest-side, rgba(255, 210, 130, 0.45), transparent);
+  opacity: calc(0.45 + 0.4 * var(--glow));
+  background: radial-gradient(ellipse closest-side, rgba(228, 240, 130, 0.5), transparent);
 }
 
-.lamp-label {
+.run-label {
   position: absolute;
   left: 0;
   right: 0;
@@ -627,7 +595,7 @@ kbd {
   text-align: center;
 }
 
-.lamp-title {
+.run-title {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -635,43 +603,19 @@ kbd {
   color: var(--muted);
 }
 
-.lamp-best {
+.run-best {
   font-family: var(--serif);
   font-size: 1.15rem;
   font-weight: 600;
 }
 
-.lamp-run:hover .lamp-cone,
-.lamp-run:focus-visible .lamp-cone {
-  filter: blur(4px) brightness(1.35);
+.run-tile:hover .run-air,
+.run-tile:focus-visible .run-air {
+  filter: brightness(1.25);
 }
 
-.lamp-run:active .lamp-swing {
-  animation-play-state: paused;
-}
-
-.lamp-run:active .lamp-label {
+.run-tile:active .run-label {
   transform: scale(0.97);
-}
-
-@keyframes lamp-sway {
-  0%,
-  100% {
-    transform: rotate(-1.6deg);
-  }
-  50% {
-    transform: rotate(1.6deg);
-  }
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-4deg);
-  }
-  50% {
-    transform: translateY(-3px) rotate(4deg);
-  }
 }
 
 /* ---------- Decks ---------- */
