@@ -235,8 +235,25 @@ p {
   padding-top: calc(1.25rem + env(safe-area-inset-top));
 }
 
-.content.home .page-head {
-  margin-bottom: 6.25rem;
+/* A column filling the screen, so the library run can sit at the bottom. */
+.content.home {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 100dvh;
+}
+
+.content.home > * {
+  flex: none;
+}
+
+.run-dock {
+  margin-top: auto;
+  padding-top: 2rem;
+}
+
+.run-dock .run-tile {
+  margin-bottom: 0;
 }
 
 .content.home .page-head h1 {

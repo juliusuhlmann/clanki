@@ -66,15 +66,6 @@
   </p>
 </div>
 
-<a class="run-tile" href={href({ name: 'practiceRun' })}>
-  <Firefly size={40} class="mark" />
-  <div>
-    <h3>Library run</h3>
-    <p>{$best ? `Best ${$best} m · ` : ''}Practice anytime. Earned every 6–10 cards.</p>
-  </div>
-  <span class="go" aria-hidden="true">→</span>
-</a>
-
 <p class="section-label">Decks</p>
 
 {#if $decks && $decks.length === 0}
@@ -154,3 +145,15 @@
 {:else}
   <button class="add-trigger" onclick={() => (adding = true)}>+ New deck</button>
 {/if}
+
+<!-- Pinned to the bottom of the screen when the deck list is short. -->
+<div class="run-dock">
+  <a class="run-tile" href={href({ name: 'practiceRun' })}>
+    <Firefly size={40} class="mark" />
+    <div>
+      <h3>Library run</h3>
+      <p>{$best ? `Best ${$best} m · ` : ''}Practice anytime. Earned every 6–10 cards.</p>
+    </div>
+    <span class="go" aria-hidden="true">→</span>
+  </a>
+</div>
