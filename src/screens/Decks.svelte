@@ -149,28 +149,55 @@
   <a class="lamp-run" href={href({ name: 'practiceRun' })} aria-label="Library run">
     <div class="lamp-swing">
       <div class="lamp-cone"></div>
-      <svg class="lamp-svg" viewBox="0 0 70 56" aria-hidden="true">
+      <svg class="lamp-svg" viewBox="0 0 100 80" aria-hidden="true">
         <defs>
           <linearGradient id="lamp-cord" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#3a2a1e" stop-opacity="0" />
             <stop offset="1" stop-color="#3a2a1e" />
           </linearGradient>
+          <!-- Polished brass: dark edges, a bright band left of centre. -->
           <linearGradient id="lamp-brass" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stop-color="#6b4b1c" />
-            <stop offset="0.45" stop-color="#e2bd66" />
-            <stop offset="1" stop-color="#6b4b1c" />
+            <stop offset="0" stop-color="#4f3512" />
+            <stop offset="0.3" stop-color="#e9c877" />
+            <stop offset="0.45" stop-color="#b98d3c" />
+            <stop offset="0.8" stop-color="#7a5620" />
+            <stop offset="1" stop-color="#3f2a0e" />
           </linearGradient>
-          <radialGradient id="lamp-glow">
-            <stop offset="0" stop-color="#ffe7b0" stop-opacity="0.9" />
-            <stop offset="1" stop-color="#ffe7b0" stop-opacity="0" />
+          <linearGradient id="lamp-shadow" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#1c1208" stop-opacity="0.45" />
+            <stop offset="0.6" stop-color="#1c1208" stop-opacity="0" />
+          </linearGradient>
+          <!-- The lit inside of the shade, seen from slightly below. -->
+          <radialGradient id="lamp-inside" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#fffaf0" />
+            <stop offset="0.35" stop-color="#ffe2a6" />
+            <stop offset="1" stop-color="#c98a35" />
+          </radialGradient>
+          <radialGradient id="lamp-halo">
+            <stop offset="0" stop-color="#ffd98f" stop-opacity="0.55" />
+            <stop offset="1" stop-color="#ffd98f" stop-opacity="0" />
           </radialGradient>
         </defs>
-        <rect x="34" y="-6" width="2" height="26" fill="url(#lamp-cord)" />
-        <rect x="31" y="18" width="8" height="5" rx="1.5" fill="#8a6a34" />
-        <path d="M13 41 C15 27 25 21 35 21 C45 21 55 27 57 41 Z" fill="url(#lamp-brass)" />
-        <rect x="12" y="39.5" width="46" height="2.5" rx="1.2" fill="#b8913f" />
-        <ellipse cx="35" cy="43" rx="17" ry="7" fill="url(#lamp-glow)" />
-        <ellipse cx="35" cy="42.2" rx="9" ry="2.4" fill="#fff6dc" />
+        <circle cx="50" cy="58" r="34" fill="url(#lamp-halo)" />
+        <rect x="49.2" y="-14" width="1.6" height="36" fill="url(#lamp-cord)" />
+        <!-- Fitting: a small cap and collar. -->
+        <rect x="45.5" y="20" width="9" height="6" rx="2" fill="url(#lamp-brass)" />
+        <rect x="43.5" y="25" width="13" height="2.4" rx="1.2" fill="#8a6528" />
+        <!-- The flared bell shade. -->
+        <path
+          d="M50 26.5 C42 26.5 38.5 30 37 37 C35.5 44 28 51 14 55.5 L86 55.5 C72 51 64.5 44 63 37 C61.5 30 58 26.5 50 26.5 Z"
+          fill="url(#lamp-brass)"
+        />
+        <path
+          d="M50 26.5 C42 26.5 38.5 30 37 37 C35.5 44 28 51 14 55.5 L86 55.5 C72 51 64.5 44 63 37 C61.5 30 58 26.5 50 26.5 Z"
+          fill="url(#lamp-shadow)"
+        />
+        <!-- Specular streak on the brass. -->
+        <path d="M41.5 31 C39.5 37 37 45 27 52" stroke="#fff3d0" stroke-opacity="0.55" stroke-width="1.6" fill="none" stroke-linecap="round" />
+        <!-- Glowing inside and the rolled rim. -->
+        <ellipse cx="50" cy="56" rx="35.5" ry="4.6" fill="url(#lamp-inside)" />
+        <ellipse cx="50" cy="56" rx="35.5" ry="4.6" fill="none" stroke="#d6ae5c" stroke-width="1.3" />
+        <ellipse cx="50" cy="55.6" rx="8" ry="2.2" fill="#ffffff" />
       </svg>
     </div>
     <div class="lamp-pool"></div>
