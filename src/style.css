@@ -596,13 +596,13 @@ kbd {
 
 .lamp-cone {
   position: absolute;
-  /* Starts at the shade's rim (79px wide) and widens down to the shelf. */
+  /* Starts at the shade's rim (75px wide) and widens down to the shelf. */
   top: 61px;
   left: 50%;
   width: 15rem;
   bottom: 0;
   transform: translateX(-50%);
-  clip-path: polygon(calc(50% - 39px) 0, calc(50% + 39px) 0, 100% 100%, 0 100%);
+  clip-path: polygon(calc(50% - 37px) 0, calc(50% + 37px) 0, 100% 100%, 0 100%);
   background: linear-gradient(180deg, rgba(255, 218, 150, 0.42), rgba(255, 214, 140, 0.16) 45%, rgba(255, 214, 140, 0.06));
   filter: blur(4px);
   transition: filter 0.2s;

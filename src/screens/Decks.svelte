@@ -185,18 +185,18 @@
         <rect x="43.5" y="25" width="13" height="2.4" rx="1.2" fill="#8a6528" />
         <!-- The flared bell shade. -->
         <path
-          d="M50 26.5 C42 26.5 38.5 30 37 37 C35.5 44 28 51 14 55.5 L86 55.5 C72 51 64.5 44 63 37 C61.5 30 58 26.5 50 26.5 Z"
+          d="M50 26.5 C44.5 26.5 41.5 27.8 40.5 30.5 L16 55.5 L84 55.5 L59.5 30.5 C58.5 27.8 55.5 26.5 50 26.5 Z"
           fill="url(#lamp-brass)"
         />
         <path
-          d="M50 26.5 C42 26.5 38.5 30 37 37 C35.5 44 28 51 14 55.5 L86 55.5 C72 51 64.5 44 63 37 C61.5 30 58 26.5 50 26.5 Z"
+          d="M50 26.5 C44.5 26.5 41.5 27.8 40.5 30.5 L16 55.5 L84 55.5 L59.5 30.5 C58.5 27.8 55.5 26.5 50 26.5 Z"
           fill="url(#lamp-shadow)"
         />
         <!-- Specular streak on the brass. -->
-        <path d="M41.5 31 C39.5 37 37 45 27 52" stroke="#fff3d0" stroke-opacity="0.55" stroke-width="1.6" fill="none" stroke-linecap="round" />
+        <path d="M40.5 33 L26 49" stroke="#fff3d0" stroke-opacity="0.55" stroke-width="1.6" fill="none" stroke-linecap="round" />
         <!-- Glowing inside and the rolled rim. -->
-        <ellipse cx="50" cy="56" rx="35.5" ry="4.6" fill="url(#lamp-inside)" />
-        <ellipse cx="50" cy="56" rx="35.5" ry="4.6" fill="none" stroke="#d6ae5c" stroke-width="1.3" />
+        <ellipse cx="50" cy="56" rx="34" ry="4.4" fill="url(#lamp-inside)" />
+        <ellipse cx="50" cy="56" rx="34" ry="4.4" fill="none" stroke="#d6ae5c" stroke-width="1.3" />
         <ellipse cx="50" cy="55.6" rx="8" ry="2.2" fill="#ffffff" />
       </svg>
     </div>
