@@ -152,7 +152,6 @@
       <div class="catalog-body">
         <p class="front">{current.front}</p>
         {#if revealed}
-          <hr />
           <p class="answer">{current.back}</p>
         {/if}
       </div>
