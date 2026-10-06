@@ -124,9 +124,9 @@ export function createRng(seed: number): () => number {
   };
 }
 
-/** Minimum distance between rows: enough time to cross two lanes at this speed. */
+/** Minimum distance between rows: about 0.7s, still enough to cross two lanes at this speed. */
 export function minGap(speed: number): number {
-  return Math.max(7, speed * 0.8);
+  return Math.max(6.5, speed * 0.7);
 }
 
 type Pattern = 'pile' | 'pair' | 'ladder' | 'letters' | 'rollingCart' | 'table' | 'books';
@@ -247,7 +247,7 @@ export class Spawner {
       extra = 5 * LETTER_SPACING;
     }
 
-    const gapAfter = Math.max(minGap(speed) + this.rng() * speed * 0.6, extra + 3);
+    const gapAfter = Math.max(minGap(speed) + this.rng() * speed * 0.5, extra + 3);
     return { obstacles, letters, gapAfter };
   }
 }
