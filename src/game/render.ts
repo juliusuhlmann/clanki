@@ -1,6 +1,6 @@
 // Draws the library corridor, obstacles, the firefly and the HUD on a 2D canvas.
 
-import { HOVER_Y, LANE_X, obstacleX, type Game, type Letter, type Obstacle } from './engine';
+import { HOVER_Y, LANE_X, obstacleX, START_HEARTS, type Game, type Letter, type Obstacle } from './engine';
 import { BOOK_FALL_START_Z, BOOK_THICKNESS, bookFall, createRng, ladderLine, WALL_X } from './spawner';
 import { drawFirefly, FIREFLY_LIGHT } from './firefly';
 import { BOOK_COLORS, makeLetterSprite, makeShelfTextures, makeVignette } from './textures';
@@ -1046,7 +1046,7 @@ export class Renderer {
     const rowY = top + 32;
 
     // Hearts.
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < START_HEARTS; i++) {
       this.heart(pad + 12 + i * 28, rowY, 10, i < game.hearts);
     }
 

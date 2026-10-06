@@ -21,11 +21,11 @@ const LANE_SWITCH_RATE = 16;
 const START_SPEED = 11;
 const MAX_EXTRA_SPEED = 9;
 const ATTRACT_SPEED = 5;
-const START_HEARTS = 3;
+export const START_HEARTS = 2;
 const INVULNERABLE_SECONDS = 1.2;
-const FIRST_ROW_DELAY = 22;
+const FIRST_ROW_DELAY = 10; // the first obstacles arrive within about a second
 /** Seconds into a run before rolling carts, reading tables and falling books appear. */
-const VARIETY_AFTER = 6;
+const VARIETY_AFTER = 3;
 
 // Letters give a speed burst: +20% that fades out over 4 seconds. Another letter
 // refills it rather than stacking, so top speed stays fair (≈ 0.65s to react at most).
