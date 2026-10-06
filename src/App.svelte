@@ -5,7 +5,7 @@
   import Review from './screens/Review.svelte';
   import Settings from './screens/Settings.svelte';
   import RunnerGame from './components/RunnerGame.svelte';
-  import Mark from './components/Mark.svelte';
+  import Firefly from './components/Firefly.svelte';
 
   let online = $state(navigator.onLine);
 </script>
@@ -15,7 +15,7 @@
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href={href({ name: 'decks' })}>
-      <Mark size={26} />
+      <Firefly size={28} />
       Clanki
     </a>
     {#if !online}<span class="offline-pill">Offline</span>{/if}

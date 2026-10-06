@@ -40,8 +40,9 @@ _TODO_
 "Reading room", Claude-desktop-like, in `src/style.css`:
 - Warm ivory light mode / warm charcoal dark mode (follows the system), terracotta `#d97757` only for primary actions
 - Serif headings (Source Serif 4, bundled for offline use), system sans for UI text, soft 1px borders
-- The mark (`src/lib/mark.ts`): Claude-style starburst of 12 tapered rays; used for the logo, the runner and the app icon (ivory tile)
-- Game ties: flashcards are library catalogue cards; a run meter during review shows the spark moving toward the next run, with "+4s" when an answer earns time; a dark "library run" tile on the home screen
+- The firefly is the mascot: `src/components/Firefly.svelte` draws the game's firefly (same code) as a still icon for the header logo, the library-run tile and empty states. `src/components/Orb.svelte` is its glowing lantern as a sphere
+- App icon: a glowing lime sphere on a warm dark-brown tile (`public/icons/`; the PNGs are generated with System.Drawing, full-bleed so they work as maskable icons)
+- Game ties: flashcards are library catalogue cards; a run meter during review shows the glowing orb moving toward the next run, with "+4s" when an answer earns time; a dark "library run" tile on the home screen
 
 ## Tech stack
 

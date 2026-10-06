@@ -5,7 +5,8 @@
   import { href } from '../lib/router.svelte';
   import { earnedSeconds, nextGap, runSeconds } from '../game/reward';
   import RunnerGame from '../components/RunnerGame.svelte';
-  import Mark from '../components/Mark.svelte';
+  import Firefly from '../components/Firefly.svelte';
+  import Orb from '../components/Orb.svelte';
 
   let { deckId }: { deckId: string } = $props();
 
@@ -120,11 +121,11 @@
       </svg>
     </a>
     {#if current && gamesEnabled}
-      <!-- Run meter: the spark travels toward the next library run. -->
+      <!-- Run meter: the glowing orb travels toward the next library run. -->
       <div class="run-meter" aria-label="{cardsToRun} cards until the next library run">
         <div class="run-meter-track">
           <div class="run-meter-fill" style="width: {meterProgress * 100}%"></div>
-          <span class="run-meter-spark" style="left: {meterProgress * 100}%"><Mark size={18} /></span>
+          <span class="run-meter-spark" style="left: {meterProgress * 100}%"><Orb size={14} /></span>
           {#key toast?.key}
             {#if toast}<span class="earned-toast">{toast.text}</span>{/if}
           {/key}
@@ -172,7 +173,7 @@
     </div>
   {:else}
     <div class="done">
-      <Mark size={72} class="spark" />
+      <Firefly size={72} class="spark" />
       <h1>{reviewedCount === 0 ? 'Nothing due' : 'That’s all for now'}</h1>
       <p class="muted">
         {reviewedCount === 0

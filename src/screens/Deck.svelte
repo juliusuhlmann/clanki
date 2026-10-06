@@ -4,7 +4,7 @@
   import { deckCounts, formatInterval, State } from '../lib/scheduler';
   import { createCard, updateCard, deleteCard } from '../lib/store';
   import { href } from '../lib/router.svelte';
-  import Mark from '../components/Mark.svelte';
+  import Firefly from '../components/Firefly.svelte';
 
   let { deckId }: { deckId: string } = $props();
 
@@ -153,7 +153,7 @@
         <p class="muted">No cards match "{query}".</p>
       {:else if $cards}
         <div class="empty panel">
-          <Mark size={36} />
+          <Firefly size={36} />
           <p>No cards yet. Add your first one above.</p>
         </div>
       {/if}

@@ -12,6 +12,8 @@ export interface FireflyPose {
   alpha: number;
   /** Lantern brightness, ~1 normally, higher while boosted. */
   glow: number;
+  /** Size of the outer halo (1 = in-game; smaller for UI icons). */
+  halo?: number;
 }
 
 /** The lantern's light, for anything the firefly illuminates. */
@@ -39,13 +41,14 @@ export function drawFirefly(ctx: CanvasRenderingContext2D, x: number, y: number,
 
   // Soft halo around the belly.
   ctx.globalCompositeOperation = 'lighter';
-  const halo = ctx.createRadialGradient(0, 0.25, 0.1, 0, 0.25, 2.4);
+  const haloR = 2.4 * (pose.halo ?? 1);
+  const halo = ctx.createRadialGradient(0, 0.25, 0.1, 0, 0.25, haloR);
   halo.addColorStop(0, `rgba(${lr},${lg},${lb},${0.38 * glow * alpha})`);
   halo.addColorStop(0.3, `rgba(${lr},${lg},${lb},${0.11 * glow * alpha})`);
   halo.addColorStop(1, `rgba(${lr},${lg},${lb},0)`);
   ctx.fillStyle = halo;
   ctx.beginPath();
-  ctx.arc(0, 0.25, 2.4, 0, Math.PI * 2);
+  ctx.arc(0, 0.25, haloR, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalCompositeOperation = 'source-over';
 

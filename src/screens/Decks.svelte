@@ -4,7 +4,7 @@
   import { deckCounts } from '../lib/scheduler';
   import { createDeck, renameDeck, deleteDeck } from '../lib/store';
   import { href } from '../lib/router.svelte';
-  import Mark from '../components/Mark.svelte';
+  import Firefly from '../components/Firefly.svelte';
 
   // Re-runs whenever the decks, cards, reviews or settings it reads change.
   const decks = liveQuery(async () => {
@@ -67,7 +67,7 @@
 </div>
 
 <a class="run-tile" href={href({ name: 'practiceRun' })}>
-  <Mark size={38} class="mark" />
+  <Firefly size={40} class="mark" />
   <div>
     <h3>Library run</h3>
     <p>{$best ? `Best ${$best} m · ` : ''}Practice anytime. Earned every 6–10 cards.</p>
@@ -79,7 +79,7 @@
 
 {#if $decks && $decks.length === 0}
   <div class="empty panel">
-    <Mark size={40} />
+    <Firefly size={40} />
     <p>No decks yet.</p>
   </div>
 {:else if $decks}
