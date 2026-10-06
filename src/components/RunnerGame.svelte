@@ -8,6 +8,7 @@
     seconds,
     lettersBefore = null,
     buttonLabel = 'Done',
+    autoContinueMs = 0,
     onfinish,
   }: {
     /** Length of the run. */
@@ -15,6 +16,8 @@
     /** Letters from earlier runs of the same library run; null for a test run. */
     lettersBefore?: number | null;
     buttonLabel?: string;
+    /** If set, the results show this long and then continue on their own (tap to continue sooner). */
+    autoContinueMs?: number;
     /** Called with this run's letters (0 if skipped). */
     onfinish: (letters: number) => void;
   } = $props();
@@ -29,6 +32,8 @@
   let input: InputController | null = null;
   let hintTime = 0;
   let resultsAt = 0;
+  let continueTimer: ReturnType<typeof setTimeout> | undefined;
+  let continued = false;
 
   const touch = matchMedia('(pointer: coarse)').matches;
   const hint = touch ? 'Swipe to dodge · tap to jump · collect letters' : '← → dodge · ↑ / Space jump · collect letters';
@@ -84,6 +89,7 @@
       observer.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
       input?.destroy();
+      clearTimeout(continueTimer);
     };
   });
 
@@ -101,7 +107,19 @@
     score = game.score;
     resultsAt = performance.now();
     phase = 'results';
+    if (autoContinueMs > 0) continueTimer = setTimeout(done, autoContinueMs);
   }
+
+  /** Leaves the results (once), by button, Enter, tap or timer. */
+  function done() {
+    if (continued) return;
+    continued = true;
+    clearTimeout(continueTimer);
+    onfinish(score);
+  }
+
+  // A tap meant for the game right as time runs out shouldn't skip the results.
+  const settled = () => performance.now() - resultsAt > 600;
 
   function onKeydown(e: KeyboardEvent) {
     if (phase === 'intro' && (e.key === 'Enter' || e.key === ' ')) {
@@ -110,7 +128,7 @@
     } else if (phase === 'results' && e.key === 'Enter' && performance.now() - resultsAt > 700) {
       // Only Enter (not Space, which is also jump) and not right after the run ends.
       e.preventDefault();
-      onfinish(score);
+      done();
     }
   }
 </script>
@@ -127,7 +145,8 @@
       <button class="skip-btn" onclick={() => onfinish(0)}>Skip</button>
     </div>
   {:else if phase === 'results'}
-    <div class="overlay">
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Enter continues too) -->
+    <div class="overlay" onclick={() => autoContinueMs > 0 && settled() && done()}>
       <div class="sheet">
         <p class="kicker">{endReason === 'hearts' ? 'Out of hearts' : "Time's up"}</p>
         <h2>{score}</h2>
@@ -135,9 +154,14 @@
         {#if lettersBefore !== null}
           <p class="best">{lettersBefore + score} letters this library run</p>
         {/if}
-        <div class="buttons">
-          <button class="btn primary big" onclick={() => onfinish(score)}>{buttonLabel}</button>
-        </div>
+        {#if autoContinueMs > 0}
+          <p class="muted small next">{buttonLabel}…</p>
+          <div class="countdown"><span style="animation-duration: {autoContinueMs}ms"></span></div>
+        {:else}
+          <div class="buttons">
+            <button class="btn primary big" onclick={done}>{buttonLabel}</button>
+          </div>
+        {/if}
       </div>
     </div>
   {/if}
@@ -272,5 +296,34 @@
   .big {
     min-height: 52px;
     font-size: 1.1rem;
+  }
+
+  .next {
+    margin: 1.1rem 0 0.5rem;
+  }
+
+  /* Empties while the results wait, then the cards come back on their own. */
+  .countdown {
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(255, 240, 220, 0.12);
+    overflow: hidden;
+  }
+
+  .countdown span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transform-origin: left;
+    animation: countdown linear forwards;
+  }
+
+  @keyframes countdown {
+    from {
+      transform: scaleX(1);
+    }
+    to {
+      transform: scaleX(0);
+    }
   }
 </style>

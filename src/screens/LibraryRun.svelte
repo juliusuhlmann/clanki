@@ -12,6 +12,9 @@
   // A library run: cards from all decks in three blocks, with a runner run after the first two.
   // Letters from both runs add up; the total is ranked against earlier library runs.
 
+  /** How long a run's score shows before the cards come back on their own. */
+  const RESULTS_MS = 1800;
+
   let deckNames = $state<Record<string, string>>({});
   let session: Session | null = null;
   let current = $state<Card | null>(null);
@@ -230,6 +233,7 @@
       seconds={RUN_SECONDS}
       lettersBefore={letters}
       buttonLabel={current ? 'Back to cards' : runsDone + 1 < RUNS_PER_LIBRARY_RUN ? 'Next run' : 'See results'}
+      autoContinueMs={RESULTS_MS}
       onfinish={endRun}
     />
   {/key}

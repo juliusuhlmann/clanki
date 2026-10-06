@@ -45,7 +45,7 @@ Library run (step 4), in `src/game/` + `src/components/RunnerGame.svelte`:
 Library run flow (`src/screens/LibraryRun.svelte`, `#/library`, started from the firefly tile on the home screen):
 - Cards come from all decks (`buildLibraryQueue`): due cards first, then new ones within each deck's daily limit, shuffled
 - Size from the cards left today, n: all of them if n < 18, half (rounded up) if 18 ≤ n < 24, otherwise 12 (`libraryRunSize`)
-- Three blocks as even as possible (`splitBlocks`, e.g. 4/4/4) with a runner run after the first two: cards → run → cards → run → cards
+- Three blocks as even as possible (`splitBlocks`, e.g. 4/4/4) with a runner run after the first two: cards → run → cards → run → cards. After each run its score shows for 1.8s (an emptying bar) and then the cards come back on their own; tap or Enter continues sooner
 - Only cards answered "Again" come back within a library run (2-minute learn-ahead), so the blocks stay even; longer learning steps wait for a later session
 - Letters from both runs add up. Finished runs are stored in the `libraryRuns` table (not in backups); the summary shows the rank and the top 10, and the home tile shows the best
 - Studying a single deck (`Review.svelte`) has no runs, just a progress bar with the cards left
