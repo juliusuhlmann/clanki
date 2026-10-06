@@ -9,6 +9,9 @@
 
   let online = $state(navigator.onLine);
   const home = $derived(router.route.name === 'decks');
+  $effect(() => {
+    document.documentElement.classList.toggle('home', home);
+  });
 </script>
 
 <svelte:window ononline={() => (online = true)} onoffline={() => (online = false)} />

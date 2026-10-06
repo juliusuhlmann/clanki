@@ -94,6 +94,17 @@ body {
   color: var(--text);
 }
 
+/* Home: the root canvas (what Android shows behind and below the page, including the
+   gesture-bar area where Chrome extends it) is the library run's dark brown, so the strip
+   at the bottom seems to carry on through the gesture bar. The page itself keeps its colour. */
+html.home {
+  background: var(--library);
+}
+
+html.home body {
+  min-height: 100dvh;
+}
+
 a {
   color: inherit;
 }
@@ -538,10 +549,12 @@ kbd {
    Everything below the shelf is the library. Stays dark in light mode too. */
 .run-strip {
   position: fixed;
-  inset: auto 0 0;
+  /* Chrome's edge-to-edge recipe: grow by the largest gesture-bar inset up front, then
+     pull down by the difference, so the strip always reaches behind the gesture bar. */
+  inset: auto 0 calc(env(safe-area-inset-bottom, 0px) - env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px)));
   z-index: 5;
   display: block;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px));
   color: #f4ede4;
   text-decoration: none;
   background:
