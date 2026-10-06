@@ -144,14 +144,14 @@
   </button>
 {/if}
 
-<!-- Docked to the bottom of the screen; the deck list scrolls behind it. -->
-<div class="run-dock">
-  <a class="run-tile" href={href({ name: 'practiceRun' })}>
+<!-- Fused to the bottom of the screen; the deck list scrolls behind it. -->
+<a class="run-strip" href={href({ name: 'practiceRun' })}>
+  <div class="run-strip-inner">
     <Firefly size={40} class="mark" />
     <div>
       <h3>Library run</h3>
-      <p>{$best ? `Best ${$best} m · ` : ''}Practice anytime. Earned every 6–10 cards.</p>
+      <p>{$best ? `Best ${$best} m` : 'Practice anytime'}</p>
     </div>
     <span class="go" aria-hidden="true">→</span>
-  </a>
-</div>
+  </div>
+</a>

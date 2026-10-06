@@ -240,25 +240,6 @@ p {
   padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
 }
 
-/* The library run, docked to the bottom edge like an app's main action. The deck list
-   scrolls behind it, fading out under a soft gradient. */
-.run-dock {
-  position: fixed;
-  inset: auto 0 0;
-  z-index: 5;
-  padding: 2.25rem 1rem calc(1rem + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, var(--bg) 55%, transparent);
-  pointer-events: none;
-}
-
-.run-dock .run-tile {
-  max-width: calc(44rem - 2rem);
-  margin: 0 auto;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  pointer-events: auto;
-}
-
 .content.home .page-head h1 {
   padding-right: 3rem;
 }
@@ -553,74 +534,93 @@ kbd {
 
 /* ---------- Home: library run tile ---------- */
 
-.run-tile {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.75rem;
-  padding: 1.1rem 1.2rem;
-  overflow: hidden;
+/* The library run: a strip fused to the bottom of the screen, under a wooden shelf edge.
+   Everything below the shelf is the library. Stays dark in light mode too. */
+.run-strip {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 5;
+  display: block;
+  padding-bottom: env(safe-area-inset-bottom);
   color: #f4ede4;
   text-decoration: none;
-  border-radius: var(--radius);
   background:
-    radial-gradient(ellipse at 18% 50%, rgba(255, 176, 110, 0.28), transparent 55%),
+    radial-gradient(ellipse 60% 140% at 50% 0%, rgba(255, 176, 110, 0.16), transparent 70%),
     linear-gradient(180deg, var(--library-2), var(--library));
-  box-shadow: var(--shadow-lift);
-  transition: transform 0.15s;
+  /* The shelf board along the top edge. */
+  border-top: 5px solid #7a4a28;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 170, 0.18),
+    0 -1px 0 #4a2c16,
+    0 -18px 40px -10px rgba(230, 240, 130, 0.14);
 }
 
-.run-tile:active {
+/* Book spines across the strip, fading out behind the text. */
+.run-strip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.22;
+  background: repeating-linear-gradient(
+    90deg,
+    #8c2f39 0 7px,
+    #2f5d50 7px 12px,
+    #b5832f 12px 20px,
+    #2b4a6f 20px 26px,
+    #6b3a5b 26px 31px,
+    #d8c9a3 31px 36px,
+    #3f6b3a 36px 44px
+  );
+  -webkit-mask-image: linear-gradient(90deg, #000, transparent 30%, transparent 70%, #000);
+  mask-image: linear-gradient(90deg, #000, transparent 30%, transparent 70%, #000);
+  pointer-events: none;
+}
+
+.run-strip-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0.95rem 1.25rem 1.05rem;
+}
+
+/* The firefly's glow spills up over the shelf edge into the page. */
+.run-strip-inner::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: -2.4rem;
+  width: 10rem;
+  height: 4.8rem;
+  background: radial-gradient(ellipse closest-side, rgba(230, 240, 130, 0.16), transparent);
+  pointer-events: none;
+}
+
+.run-strip:active .run-strip-inner {
   transform: scale(0.99);
 }
 
-/* Book spines along the right edge, echoing the game's shelves */
-.run-tile::after {
-  content: '';
-  position: absolute;
-  inset: 0 0 0 auto;
-  width: 45%;
-  opacity: 0.35;
-  background:
-    linear-gradient(90deg, var(--library-2), transparent 60%),
-    repeating-linear-gradient(
-      90deg,
-      #8c2f39 0 7px,
-      #2f5d50 7px 12px,
-      #b5832f 12px 20px,
-      #2b4a6f 20px 26px,
-      #6b3a5b 26px 31px,
-      #d8c9a3 31px 36px,
-      #3f6b3a 36px 44px
-    );
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 50%);
-  mask-image: linear-gradient(90deg, transparent, #000 50%);
-}
-
-.run-tile > * {
-  position: relative;
-  z-index: 1;
-}
-
-.run-tile .mark {
+.run-strip .mark {
   flex: none;
   animation: bob 2.4s ease-in-out infinite;
 }
 
-.run-tile h3 {
+.run-strip h3 {
   margin: 0;
   font-size: 1.15rem;
   color: #fff8ef;
 }
 
-.run-tile p {
+.run-strip p {
   margin: 0.1rem 0 0;
   font-size: 0.85rem;
   color: rgba(244, 237, 228, 0.7);
 }
 
-.run-tile .go {
+.run-strip .go {
   margin-left: auto;
   font-size: 1.3rem;
   color: rgba(244, 237, 228, 0.8);
