@@ -585,7 +585,7 @@ export class Renderer {
     const g = ctx.createRadialGradient(c.x - rad * 0.35, c.y - rad * 0.4, rad * 0.1, c.x, c.y, rad);
     g.addColorStop(0, fogged('#4f8fb0', f, 0.1, lit));
     g.addColorStop(0.7, fogged('#2d5f7e', f, 0, lit * 0.7));
-    g.addColorStop(1, fogged('#173246', f, 0, lit * 0.4));
+    g.addColorStop(1, fogged('#2a5470', f, 0, lit * 0.5));
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
@@ -633,13 +633,6 @@ export class Renderer {
       ctx.arc(p.x, p.y, Math.max(1, rad * 0.1 * Math.sqrt(facing)), 0, Math.PI * 2);
       ctx.fill();
     }
-
-    // A soft rim so it reads as a ball against the dark floor.
-    ctx.strokeStyle = fogged('#0e1c27', f);
-    ctx.lineWidth = Math.max(1, rad * 0.05);
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
-    ctx.stroke();
   }
 
   /** A low bookcase under a ladder, reaching from its lane to the wall the ladder leans on. */
