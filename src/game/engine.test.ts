@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Game, LANE_X, START_HEARTS, type Action, type GameEvent } from './engine';
-import { CART_HEIGHT, LADDER_TOP_Y, PILE_HEIGHT, TABLE_BASE, TABLE_DEPTH, TABLE_HEIGHT } from './spawner';
+import { CART_HEIGHT, GLOBE_RADIUS, LADDER_TOP_Y, PILE_HEIGHT, TABLE_BASE, TABLE_DEPTH, TABLE_HEIGHT } from './spawner';
 
 const DT = 1 / 60;
 
@@ -179,6 +179,40 @@ describe('Game', () => {
     for (let i = 0; i < 3; i++) game.letters.push({ lane: 1, z: 2 + i * 2, y: 0.5, char: 'C', taken: false, phase: 0 });
     simulate(game, 1.5);
     expect(game.score).toBe(3);
+  });
+
+  describe('rolling globe', () => {
+    function addGlobe(game: Game, z: number) {
+      game.obstacles.push({ kind: 'globe', lanes: [1], z, depth: GLOBE_RADIUS * 2, height: GLOBE_RADIUS * 2, variant: 1, hit: false });
+    }
+
+    it('hits you if you stay in its lane', () => {
+      const game = emptyGame();
+      addGlobe(game, 5);
+      simulate(game, 1);
+      expect(game.hearts).toBe(START_HEARTS - 1);
+    });
+
+    it('can be jumped, timed like the rest of its row', () => {
+      const game = emptyGame();
+      addGlobe(game, 5);
+      simulateJump(game, 1);
+      expect(game.hearts).toBe(START_HEARTS);
+    });
+
+    it('can be dodged', () => {
+      const game = emptyGame();
+      addGlobe(game, 5);
+      simulate(game, 1, { 2: 'left' });
+      expect(game.hearts).toBe(START_HEARTS);
+    });
+  });
+
+  it('a long frame cannot carry a thin obstacle straight past you', () => {
+    const game = emptyGame();
+    game.obstacles.push({ kind: 'pile', lanes: [1], z: 0.3, depth: 0.1, height: PILE_HEIGHT, variant: 1, hit: false });
+    game.update(0.05);
+    expect(game.hearts).toBe(START_HEARTS - 1);
   });
 
   describe('leaning ladder (on the left wall)', () => {

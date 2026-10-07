@@ -1,7 +1,7 @@
 // Draws the library corridor, obstacles, the firefly and the HUD on a 2D canvas.
 
-import { HOVER_Y, LANE_X, obstacleX, START_HEARTS, type Game, type Letter, type Obstacle } from './engine';
-import { BOOK_FALL_START_Z, BOOK_THICKNESS, bookFall, createRng, ladderLine, WALL_X } from './spawner';
+import { HOVER_Y, LANE_X, obstacleX, obstacleZ, START_HEARTS, type Game, type Letter, type Obstacle } from './engine';
+import { BOOK_FALL_START_Z, BOOK_THICKNESS, bookFall, createRng, GLOBE_RADIUS, globeRolled, globeZ, ladderLine, WALL_X } from './spawner';
 import { drawFirefly, FIREFLY_LIGHT } from './firefly';
 import { BOOK_COLORS, makeLetterSprite, makeShelfTextures, makeVignette } from './textures';
 
@@ -491,7 +491,7 @@ export class Renderer {
     type Drawable = { z: number; draw: () => void };
     const items: Drawable[] = [];
 
-    for (const o of game.obstacles) items.push({ z: o.z, draw: () => this.drawObstacle(o) });
+    for (const o of game.obstacles) items.push({ z: obstacleZ(o), draw: () => this.drawObstacle(o) });
     for (const l of game.letters) items.push({ z: l.z, draw: () => this.drawLetter(l) });
 
     const first = Math.ceil((game.distance + NEAR) / LAMP_GAP - 0.5);
@@ -534,7 +534,7 @@ export class Renderer {
   }
 
   private drawObstacle(o: Obstacle): void {
-    if (o.z < NEAR + 0.2) return;
+    if (obstacleZ(o) < NEAR + 0.2) return;
     const rng = createRng(o.variant);
     const pick = () => BOOK_COLORS[Math.floor(rng() * BOOK_COLORS.length)];
 
@@ -552,8 +552,126 @@ export class Renderer {
       this.drawTable(o, rng, pick);
     } else if (o.kind === 'books') {
       this.drawFallingBooks(o, rng, pick);
+    } else if (o.kind === 'globe') {
+      this.drawGlobe(LANE_X[o.lanes[0]], globeZ(o.z) + GLOBE_RADIUS, globeRolled(o.z), rng);
+    } else if (o.kind === 'shelf' && o.side) {
+      this.drawBookcase(o.side, LANE_X[o.lanes[0]], o.z, o.z + o.depth, o.height, rng, pick);
     } else if (o.side) {
       this.drawLadder(o.side, o.z, o.z + o.depth);
+    }
+  }
+
+  /**
+   * A library globe rolling toward you: ocean sphere with continents and brass axis pins
+   * that turn as it rolls (`rolled` is the distance it has covered along the floor).
+   */
+  private drawGlobe(cx: number, zc: number, rolled: number, rng: () => number): void {
+    const ctx = this.ctx;
+    const r = GLOBE_RADIUS;
+    const f = fogAt(zc - r);
+    const lit = this.litAt(cx, r, zc - r);
+    const c = this.p(cx, r, zc);
+    const rad = r * c.s;
+
+    // Contact shadow.
+    const s0 = this.p(cx, 0.002, zc - r);
+    const s1 = this.p(cx, 0.002, zc + r);
+    ctx.fillStyle = `rgba(10,4,2,${0.5 * (1 - f)})`;
+    ctx.beginPath();
+    ctx.ellipse(c.x, (s0.y + s1.y) / 2, rad * 1.1, Math.max(1, (s0.y - s1.y) / 2 + rad * 0.08), 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // The ocean, lit from the upper left.
+    const g = ctx.createRadialGradient(c.x - rad * 0.35, c.y - rad * 0.4, rad * 0.1, c.x, c.y, rad);
+    g.addColorStop(0, fogged('#4f8fb0', f, 0.1, lit));
+    g.addColorStop(0.7, fogged('#2d5f7e', f, 0, lit * 0.7));
+    g.addColorStop(1, fogged('#173246', f, 0, lit * 0.4));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rolling toward you turns it about the sideways axis: the top moves toward you.
+    const a = rolled / r;
+    const cos = Math.cos(a);
+    const sin = Math.sin(a);
+    // Direction from the camera to the centre, to tell which surface points face it.
+    const vx = cx - this.camX;
+    const vy = r - CAM_Y;
+    const vz = zc + CAM_BACK;
+    const surface = (x: number, y: number, z: number) => {
+      const ry = y * cos + z * sin;
+      const rz = z * cos - y * sin;
+      const facing = -(x * vx + ry * vy + rz * vz) / Math.hypot(vx, vy, vz);
+      return { p: this.p(cx + x * r, r + ry * r, zc + rz * r), facing };
+    };
+
+    // Continents: a few blobs of land dots at seeded spots.
+    const blobs = 5;
+    for (let b = 0; b < blobs; b++) {
+      const lat0 = (rng() - 0.5) * 2.2;
+      const lon0 = rng() * Math.PI * 2;
+      const color = rng() < 0.6 ? '#7a9a52' : '#b39a5f';
+      for (let k = 0; k < 9; k++) {
+        const lat = lat0 + (rng() - 0.5) * 0.7;
+        const lon = lon0 + (rng() - 0.5) * 0.9;
+        const { p, facing } = surface(Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon));
+        if (facing <= 0.05) continue;
+        ctx.fillStyle = fogged(color, f, -0.15 + facing * 0.15, lit * facing);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(0.6, rad * 0.16 * Math.sqrt(facing)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Brass pins where the axis came out of the stand.
+    for (const pole of [-1, 1]) {
+      const { p, facing } = surface(0, pole, 0);
+      if (facing <= 0) continue;
+      ctx.fillStyle = fogged('#d8b25a', f, 0, lit);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(1, rad * 0.1 * Math.sqrt(facing)), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // A soft rim so it reads as a ball against the dark floor.
+    ctx.strokeStyle = fogged('#0e1c27', f);
+    ctx.lineWidth = Math.max(1, rad * 0.05);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  /** A low bookcase under a ladder, reaching from its lane to the wall the ladder leans on. */
+  private drawBookcase(side: -1 | 1, cx: number, z0: number, z1: number, height: number, rng: () => number, pick: () => string): void {
+    const inner = cx - side * 0.45;
+    const outer = side * (WALL_X - 0.02);
+    const x0 = Math.min(inner, outer);
+    const x1 = Math.max(inner, outer);
+    const f = fogAt(z0);
+    const lit = this.litAt(cx, height / 2, z0);
+    this.floorShadow(x0, x1, z0, z1, 0.5);
+    this.box(x0, x1, 0, height, z0, z1, '#5e3a22');
+    // Three shelves of book spines on the front.
+    const rows = 3;
+    const rowH = (height - 0.14) / rows;
+    for (let r = 0; r < rows; r++) {
+      const yb = 0.08 + r * rowH;
+      const yt = yb + rowH - 0.05;
+      const a = this.p(x0 + 0.05, yt, z0);
+      const b = this.p(x1 - 0.05, yb, z0);
+      this.ctx.fillStyle = fogged('#1a0f08', f);
+      this.ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+      let sx = x0 + 0.07;
+      while (sx < x1 - 0.09) {
+        const w = 0.05 + rng() * 0.05;
+        const top = yb + (yt - yb) * (0.6 + rng() * 0.38);
+        const p0 = this.p(sx, top, z0);
+        const p1 = this.p(Math.min(sx + w, x1 - 0.07), yb, z0);
+        this.ctx.fillStyle = fogged(pick(), f, -0.1, lit);
+        this.ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+        sx += w + 0.012;
+      }
     }
   }
 

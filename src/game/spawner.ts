@@ -1,7 +1,7 @@
 // Generates rows of obstacles and letters. Every row leaves at least one lane
 // completely empty, and rows are spaced so the player can always reach it.
 
-export type ObstacleKind = 'pile' | 'cart' | 'ladder' | 'rollingCart' | 'table' | 'books';
+export type ObstacleKind = 'pile' | 'cart' | 'ladder' | 'shelf' | 'rollingCart' | 'table' | 'books' | 'globe';
 
 export interface ObstacleSpec {
   kind: ObstacleKind;
@@ -10,7 +10,7 @@ export interface ObstacleSpec {
    * covers the lane it ends up in; a reading table covers every lane it spans.
    */
   lanes: number[];
-  /** Ladders: the wall it leans on. Falling books: the wall they fall from. */
+  /** Ladders (and a bookcase under one): the wall it leans on. Falling books: the wall they fall from. */
   side?: -1 | 1;
   /** Rolling carts: the lane the cart starts in before drifting into `lanes[0]`. */
   fromLane?: number;
@@ -56,6 +56,12 @@ export const LADDER_DEPTH = 0.9;
 export function ladderLine(side: -1 | 1): { footX: number; topX: number; topY: number } {
   return { footX: -side * LADDER_FOOT_X, topX: side * WALL_X, topY: LADDER_TOP_Y };
 }
+
+/**
+ * A low bookcase that can stand under a ladder in the wall-side lane. Its top stays below
+ * the ladder even at the lane's inner edge, so that lane is blocked whether you glide or jump.
+ */
+export const SHELF_HEIGHT = 1.1;
 
 /** Height of the ladder at sideways position x, or null where there is no ladder. */
 export function ladderHeightAt(side: -1 | 1, x: number): number | null {
@@ -104,6 +110,24 @@ export function booksHeightAt(z: number): number {
   return h;
 }
 
+// Rolling globe: a library globe off its stand. Small enough to jump (top 0.72, the spark's
+// underside clears ~1.3 at the top of a jump). It waits out of sight a little behind its row,
+// then rolls toward you faster than the corridor and catches up with its row just as it
+// reaches you, so it arrives with the row and never runs into the row ahead.
+export const GLOBE_RADIUS = 0.36;
+export const GLOBE_LEAD = 12;
+export const GLOBE_ROLL_Z = 34;
+
+/** Where a globe is when its row is at distance z (it rolls once the row is within GLOBE_ROLL_Z). */
+export function globeZ(z: number): number {
+  return z >= GLOBE_ROLL_Z ? z + GLOBE_LEAD : z * (1 + GLOBE_LEAD / GLOBE_ROLL_Z);
+}
+
+/** Distance the globe has rolled along the floor when its row is at z (for spinning it). */
+export function globeRolled(z: number): number {
+  return GLOBE_LEAD - (globeZ(z) - z);
+}
+
 /** Lanes a player gliding along the floor (no jump) can't get through, once the row is close. */
 export function glideBlocked(o: ObstacleSpec): number[] {
   return o.kind === 'table' ? [] : o.lanes;
@@ -129,7 +153,7 @@ export function minGap(speed: number): number {
   return Math.max(6, speed * 0.6);
 }
 
-type Pattern = 'pile' | 'pair' | 'ladder' | 'letters' | 'rollingCart' | 'table' | 'books';
+type Pattern = 'pile' | 'pair' | 'ladder' | 'letters' | 'rollingCart' | 'table' | 'books' | 'globe';
 
 export class Spawner {
   private letterIndex = 0;
@@ -181,7 +205,7 @@ export class Spawner {
       [0.15, 'ladder'],
       [0.07, 'letters'],
     ];
-    if (variety) patterns.push([0.12, 'rollingCart'], [0.12, 'table'], [0.1, 'books']);
+    if (variety) patterns.push([0.12, 'rollingCart'], [0.12, 'table'], [0.1, 'books'], [0.1, 'globe']);
     const total = patterns.reduce((s, [w]) => s + w, 0);
     let roll = this.rng() * total;
     let pattern: Pattern = 'pile';
@@ -212,12 +236,18 @@ export class Spawner {
       const side: -1 | 1 = this.rng() < 0.5 ? -1 : 1;
       const underLane = side < 0 ? 0 : 2;
       const farLane = side < 0 ? 2 : 0;
-      obstacles = [
-        { kind: 'ladder', lanes: [1], side, depth: LADDER_DEPTH, height: LADDER_TOP_Y, variant: this.variant() },
-      ];
-      // Sometimes a book cart stands in the far lane: go under the ladder or jump it.
-      if (this.rng() < 0.5) obstacles.push(this.cart(farLane));
-      if (this.rng() < 0.5) letters = this.letterLine(underLane, 3);
+      const ladder: ObstacleSpec = { kind: 'ladder', lanes: [1], side, depth: LADDER_DEPTH, height: LADDER_TOP_Y, variant: this.variant() };
+      if (this.rng() < 0.3) {
+        // Sometimes a bookcase stands under the ladder: jump the ladder or take the far lane.
+        // Listed first so it's drawn beneath the ladder.
+        obstacles = [{ kind: 'shelf', lanes: [underLane], side, depth: LADDER_DEPTH, height: SHELF_HEIGHT, variant: this.variant() }, ladder];
+        if (this.rng() < 0.5) letters = this.letterLine(farLane, 3);
+      } else {
+        obstacles = [ladder];
+        // Sometimes a book cart stands in the far lane: go under the ladder or jump it.
+        if (this.rng() < 0.5) obstacles.push(this.cart(farLane));
+        if (this.rng() < 0.5) letters = this.letterLine(underLane, 3);
+      }
     } else if (pattern === 'rollingCart') {
       const from = this.pick(lanes);
       const to = from === 1 ? this.pick([0, 2]) : 1;
@@ -242,6 +272,22 @@ export class Spawner {
       const side: -1 | 1 = lane === 0 ? -1 : lane === 2 ? 1 : this.rng() < 0.5 ? -1 : 1;
       obstacles = [{ ...this.pile(lane), kind: 'books', side }];
       obstacles.push(this.cart(this.pick(lanes.filter((l) => l !== lane))));
+    } else if (pattern === 'globe') {
+      const lane = this.pick(lanes);
+      const others = lanes.filter((l) => l !== lane);
+      obstacles = [{ kind: 'globe', lanes: [lane], depth: GLOBE_RADIUS * 2, height: GLOBE_RADIUS * 2, variant: this.variant() }];
+      // Usually something else in the way: a cart or a pile beside it (dodge or jump the globe),
+      // or a reading table over both other lanes (glide under it or jump the globe).
+      const r = this.rng();
+      if (r < 0.25 && lane !== 1) {
+        obstacles.push({ kind: 'table', lanes: others, base: TABLE_BASE, depth: TABLE_DEPTH, height: TABLE_HEIGHT, variant: this.variant() });
+      } else if (r < 0.7) {
+        obstacles.push(this.cart(this.pick(others)));
+      } else if (r < 0.9) {
+        obstacles.push(this.pile(this.pick(others)));
+      }
+      // The globe trails its row by up to GLOBE_LEAD while far away; keep the next row clear of it.
+      extra = GLOBE_LEAD + 2;
     } else {
       letters = this.letterLine(this.pick(lanes), 5);
       extra = 5 * LETTER_SPACING;

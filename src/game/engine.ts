@@ -1,7 +1,7 @@
 // Runner game state and rules. Pure logic: no drawing, no DOM.
 // World units: x = sideways (lanes), y = up, z = distance ahead of the player.
 
-import { booksHeightAt, createRng, ladderHeightAt, ladderLine, rollingCartX, Spawner, type ObstacleKind } from './spawner';
+import { booksHeightAt, createRng, globeZ, ladderHeightAt, ladderLine, rollingCartX, Spawner, type ObstacleKind } from './spawner';
 
 export const LANE_X = [-1.1, 0, 1.1];
 export const SPAWN_Z = 46;
@@ -19,7 +19,7 @@ const DROP_VELOCITY = 7; // from the top of a jump: ~0.14s to land (gravity alon
 const LANE_SWITCH_RATE = 16;
 
 const START_SPEED = 17;
-const MAX_EXTRA_SPEED = 28; // top speed 45 m/s
+const MAX_EXTRA_SPEED = 33; // top speed 50 m/s
 const SPEED_RAMP_SECONDS = 18;
 const ATTRACT_SPEED = 5;
 export const START_HEARTS = 2;
@@ -53,6 +53,11 @@ export interface Obstacle {
 /** Sideways centre of a one-lane obstacle right now (rolling carts move). */
 export function obstacleX(o: Obstacle): number {
   return o.kind === 'rollingCart' && o.fromLane !== undefined ? rollingCartX(o.fromLane, o.lanes[0], o.z, LANE_X) : LANE_X[o.lanes[0]];
+}
+
+/** Where an obstacle's front actually is (a rolling globe runs ahead of its row's z). */
+export function obstacleZ(o: Obstacle): number {
+  return o.kind === 'globe' ? globeZ(o.z) : o.z;
 }
 
 /** Current height of an obstacle's top (falling books build up as they land). */
@@ -190,7 +195,7 @@ export class Game {
     // Move the world toward the player.
     for (const o of this.obstacles) o.z -= dz;
     for (const l of this.letters) l.z -= dz;
-    this.obstacles = this.obstacles.filter((o) => o.z + o.depth > DESPAWN_Z);
+    this.obstacles = this.obstacles.filter((o) => obstacleZ(o) + o.depth > DESPAWN_Z);
     this.letters = this.letters.filter((l) => l.z > DESPAWN_Z && !l.taken);
 
     if (this.mode !== 'run') return events;
@@ -201,14 +206,15 @@ export class Game {
     this.untilNextRow -= dz;
     if (this.untilNextRow <= 0) this.untilNextRow += this.spawnRow(SPAWN_Z + this.untilNextRow);
 
-    this.checkCollisions(events);
+    this.checkCollisions(events, dz);
 
     if (this.hearts <= 0) this.end('hearts', events);
     else if (this.timeLeft <= 0) this.end('time', events);
     return events;
   }
 
-  private checkCollisions(events: GameEvent[]): void {
+  /** `dz` is how far the world moved this frame: an obstacle hits if it swept through you. */
+  private checkCollisions(events: GameEvent[], dz: number): void {
     const bottom = HOVER_Y + this.jumpY - SPARK_HALF_HEIGHT;
     const top = HOVER_Y + this.jumpY + SPARK_HALF_HEIGHT;
     const centerY = HOVER_Y + this.jumpY;
@@ -216,7 +222,11 @@ export class Game {
     if (this.invulnerableFor <= 0) {
       for (const o of this.obstacles) {
         if (o.hit) continue;
-        const overlapZ = SPARK_HALF_DEPTH > o.z && -SPARK_HALF_DEPTH < o.z + o.depth;
+        // Check the whole stretch the obstacle covered this frame, so a long frame at top
+        // speed can't carry it straight past you.
+        const z = obstacleZ(o);
+        const before = o.kind === 'globe' ? globeZ(o.z + dz) : o.z + dz;
+        const overlapZ = SPARK_HALF_DEPTH > z && -SPARK_HALF_DEPTH < before + o.depth;
         if (!overlapZ) continue;
         let hit: boolean;
         if (o.kind === 'ladder' && o.side) {

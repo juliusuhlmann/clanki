@@ -4,12 +4,17 @@ import {
   bookFall,
   booksHeightAt,
   createRng,
+  GLOBE_LEAD,
+  GLOBE_RADIUS,
+  GLOBE_ROLL_Z,
+  globeZ,
   glideBlocked,
   ladderHeightAt,
   minGap,
   PILE_HEIGHT,
   ROLL_END_Z,
   ROLL_START_Z,
+  SHELF_HEIGHT,
   rollingCartX,
   Spawner,
   TABLE_BASE,
@@ -39,15 +44,15 @@ describe('Spawner', () => {
     }
   });
 
-  it('only adds rolling carts, tables and falling books when variety is on', () => {
+  it('only adds rolling carts, tables, falling books and globes when variety is on', () => {
     const plain = new Spawner(createRng(3));
     const varied = new Spawner(createRng(3));
     const seen = new Set<string>();
     for (let i = 0; i < 1000; i++) {
-      for (const o of plain.next(12, false).obstacles) expect(['pile', 'cart', 'ladder']).toContain(o.kind);
+      for (const o of plain.next(12, false).obstacles) expect(['pile', 'cart', 'ladder', 'shelf']).toContain(o.kind);
       for (const o of varied.next(12, true).obstacles) seen.add(o.kind);
     }
-    expect(seen).toEqual(new Set(['pile', 'cart', 'ladder', 'rollingCart', 'table', 'books']));
+    expect(seen).toEqual(new Set(['pile', 'cart', 'ladder', 'shelf', 'rollingCart', 'table', 'books', 'globe']));
   });
 
   it('rolling carts drift into an adjacent lane and settle well before reaching you', () => {
@@ -98,22 +103,73 @@ describe('Spawner', () => {
     expect(kinds.get('cart')).toBeGreaterThan(apexBottom);
   });
 
-  it('leans ladders on a wall and only puts carts in the far lane beside them', () => {
+  it('leans ladders on a wall, with a cart in the far lane or a bookcase underneath', () => {
     const spawner = new Spawner(createRng(11));
     let ladders = 0;
+    let shelves = 0;
     for (let i = 0; i < 2000; i++) {
       const row = spawner.next(12);
       const ladder = row.obstacles.find((o) => o.kind === 'ladder');
-      if (!ladder) continue;
+      if (!ladder) {
+        expect(row.obstacles.some((o) => o.kind === 'shelf')).toBe(false);
+        continue;
+      }
       ladders++;
       expect([-1, 1]).toContain(ladder.side);
       const farLane = ladder.side === -1 ? 2 : 0;
-      for (const o of row.obstacles.filter((o) => o !== ladder)) {
-        expect(o.kind).toBe('cart');
-        expect(o.lanes).toEqual([farLane]);
+      const underLane = ladder.side === -1 ? 0 : 2;
+      const others = row.obstacles.filter((o) => o !== ladder);
+      expect(others.length).toBeLessThan(2);
+      for (const o of others) {
+        if (o.kind === 'shelf') {
+          shelves++;
+          expect(o.lanes).toEqual([underLane]);
+          expect(o.side).toBe(ladder.side);
+          // Drawn beneath the ladder.
+          expect(row.obstacles.indexOf(o)).toBeLessThan(row.obstacles.indexOf(ladder));
+        } else {
+          expect(o.kind).toBe('cart');
+          expect(o.lanes).toEqual([farLane]);
+        }
       }
     }
     expect(ladders).toBeGreaterThan(100);
+    expect(shelves).toBeGreaterThan(30);
+  });
+
+  it('a bookcase under a ladder fits below it across its whole lane', () => {
+    for (const side of [-1, 1] as const) {
+      const innerEdge = LANE_X[side === -1 ? 0 : 2] - side * 0.45;
+      expect(SHELF_HEIGHT).toBeLessThan(ladderHeightAt(side, innerEdge)! - 0.1);
+    }
+  });
+
+  it('globes roll in from out of sight and reach you together with their row', () => {
+    // Out of sight (the corridor fades out at 46) until it starts rolling.
+    expect(globeZ(GLOBE_ROLL_Z)).toBeGreaterThanOrEqual(46);
+    // Continuous where it starts rolling, never ahead of its row, and level with it on arrival.
+    expect(globeZ(GLOBE_ROLL_Z - 1e-9)).toBeCloseTo(globeZ(GLOBE_ROLL_Z));
+    for (let z = 0; z < 60; z += 0.5) expect(globeZ(z)).toBeGreaterThanOrEqual(z);
+    expect(globeZ(0)).toBe(0);
+    // Jumpable: the spark's underside at the top of a jump clears it.
+    expect(GLOBE_RADIUS * 2).toBeLessThan(HOVER_Y + 1.13 - 0.25);
+  });
+
+  it('puts globes in a lane of their own, mostly with company, and keeps the next row clear of them', () => {
+    const spawner = new Spawner(createRng(13));
+    let globes = 0;
+    let withCompany = 0;
+    for (let i = 0; i < 4000; i++) {
+      const row = spawner.next(12);
+      const globe = row.obstacles.find((o) => o.kind === 'globe');
+      if (!globe) continue;
+      globes++;
+      if (row.obstacles.length > 1) withCompany++;
+      for (const o of row.obstacles) if (o !== globe) expect(o.lanes).not.toContain(globe.lanes[0]);
+      expect(row.gapAfter).toBeGreaterThan(GLOBE_LEAD + GLOBE_RADIUS * 2);
+    }
+    expect(globes).toBeGreaterThan(100);
+    expect(withCompany / globes).toBeGreaterThan(0.8);
   });
 
   it('ladder heights: low over the middle lane, high near the wall, none in the far lane', () => {
