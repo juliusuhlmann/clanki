@@ -181,9 +181,17 @@ p {
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.2rem 0.6rem;
+  white-space: nowrap;
   border-radius: 999px;
   color: var(--hard);
   background: color-mix(in srgb, var(--hard) 14%, transparent);
+}
+
+/* Sync failed (wrong key, server down): leads to Settings → Sync for the details */
+.error-pill {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  text-decoration: none;
 }
 
 .icon-btn {
@@ -202,31 +210,6 @@ p {
 .icon-btn:hover {
   color: var(--text);
   background: var(--surface-2);
-}
-
-/* Sync state on the settings button: green synced, amber waiting, red failed */
-.settings-btn {
-  position: relative;
-}
-
-.sync-dot {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 1.5px solid var(--bg);
-  box-sizing: content-box;
-  background: var(--good);
-}
-
-.sync-dot.busy {
-  background: var(--hard);
-}
-
-.sync-dot.error {
-  background: var(--danger);
 }
 
 .content {
