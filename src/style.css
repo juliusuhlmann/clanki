@@ -865,6 +865,11 @@ input[type='search'] {
   color: var(--faint);
 }
 
+.catalog-card.tappable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .catalog-head-end {
   display: inline-flex;
   align-items: flex-start;

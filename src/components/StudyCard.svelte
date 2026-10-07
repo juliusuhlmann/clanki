@@ -95,7 +95,16 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<article class="catalog-card">
+<!-- Tapping the card shows the answer, like the button (Space/Enter for the keyboard). -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<article
+  class="catalog-card"
+  class:tappable={!revealed && !editing}
+  onclick={(e) => {
+    if (revealed || editing || (e.target as HTMLElement).closest('button, a')) return;
+    onreveal();
+  }}
+>
   <div class="catalog-head">
     <span>{deckName}</span>
     <span class="catalog-head-end">
