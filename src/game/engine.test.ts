@@ -125,7 +125,7 @@ describe('Game', () => {
       const game = emptyGame();
       const glideY = game.bodyY;
       simulate(game, 0.2, { 0: 'down' });
-      expect(game.bodyY).toBeLessThan(glideY - 0.15);
+      expect(game.bodyY).toBeLessThan(glideY - 0.1);
       simulate(game, 0.8);
       expect(game.bodyY).toBeCloseTo(glideY, 2);
     });

@@ -25,7 +25,7 @@ import {
   TABLE_HEIGHT,
   UNDER_TABLE_LETTER_Y,
 } from './spawner';
-import { DUCK_Y, HOVER_Y, JUMP_APEX, LANE_X } from './engine';
+import { DUCK_HALF_HEIGHT, DUCK_Y, HOVER_Y, JUMP_APEX, LANE_X } from './engine';
 
 describe('Spawner', () => {
   it('always leaves at least one lane you can glide through without jumping', () => {
@@ -81,7 +81,7 @@ describe('Spawner', () => {
 
   it('tables leave room to duck under, but not to glide under or jump over', () => {
     const glideTop = HOVER_Y + 0.25;
-    const duckTop = DUCK_Y + 0.14;
+    const duckTop = DUCK_Y + DUCK_HALF_HEIGHT;
     const apexBottom = HOVER_Y + JUMP_APEX - 0.25;
     expect(duckTop).toBeLessThan(TABLE_BASE);
     expect(glideTop).toBeGreaterThan(TABLE_BASE);

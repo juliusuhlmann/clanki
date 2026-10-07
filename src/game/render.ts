@@ -1148,7 +1148,7 @@ export class Renderer {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.scale(1 + 0.2 * game.duck, 1 - 0.4 * game.duck);
+    ctx.scale(1 + 0.1 * game.duck, 1 - 0.2 * game.duck);
     drawFirefly(ctx, 0, 0, 0.24 * p.s, { t: this.t, tilt, air, alpha: flicker, glow: this.glow });
     ctx.restore();
   }

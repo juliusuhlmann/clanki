@@ -85,7 +85,7 @@ export function rollingCartX(fromLane: number, toLane: number, z: number, laneX:
 }
 
 // Reading table: low enough that you have to duck under it (gliding, the spark's top is at
-// ~0.67; ducked, ~0.38). Any jump hits it, and it's too tall (lamp and books on top) to jump over.
+// ~0.67; ducked, ~0.46). Any jump hits it, and it's too tall (lamp and books on top) to jump over.
 export const TABLE_BASE = 0.55;
 /** Letters under a table sit low, where a ducking spark picks them up. */
 export const UNDER_TABLE_LETTER_Y = 0.3;
