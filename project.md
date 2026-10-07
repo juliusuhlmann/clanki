@@ -101,6 +101,7 @@ Normal scheduling: FSRS (ts-fsrs, `src/lib/fsrs.ts` + `scheduler.ts`) aiming for
   - Protocol and merge rule in `sync/src/protocol.ts`, shared by the worker, the client and the tests. One `POST /sync` pushes this device's changes and returns everything after its cursor
   - Records are `(kind, id, updatedAt, deleted, data)` for decks, cards, reviews (id `cardId|reviewedAt`) and library runs; the newer `updatedAt` wins, ties keep what's there; deletions are tombstones
   - Client (`src/lib/sync.ts`): pushes everything changed since the last successful push (by `updatedAt` / `reviewedAt` / `finishedAt`) plus pending deletions; `src/lib/syncRunner.svelte.ts` runs it on start, when coming online or to the foreground, 3s after study changes, and every minute while open
+  - Once linked, a dot on the settings button shows the state at a glance: green synced, amber changes waiting, red failed (details in Settings → Sync)
   - Repo deck writes use `updatedAt` 0 (new) and `old + 1` (edits), so a device creating a repo deck from the file never overwrites progress synced from another device
   - Embedded images travel inside their card. Requests and server pages stop at ~3 MB (`MAX_BATCH_BYTES`); a card over ~1.9 MB (D1 allows 2 MB per value) is skipped and Settings → Sync says how many stay on this device only
   - Not synced: settings (new cards per day is per device)

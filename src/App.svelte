@@ -8,9 +8,18 @@
   import RunnerGame from './components/RunnerGame.svelte';
   import Firefly from './components/Firefly.svelte';
   import { RUN_SECONDS } from './game/reward';
+  import { syncStatus } from './lib/syncRunner.svelte';
 
   let online = $state(navigator.onLine);
   const home = $derived(router.route.name === 'decks');
+
+  // A dot on the settings button: is this device in step with the others? Only once sync is set up.
+  const sync = $derived.by(() => {
+    if (!syncStatus.linked) return null;
+    if (syncStatus.error) return { state: 'error', label: 'Sync failed' };
+    if (syncStatus.pending) return { state: 'busy', label: `${syncStatus.pending} change${syncStatus.pending === 1 ? '' : 's'} not synced yet` };
+    return { state: 'ok', label: 'Synced' };
+  });
   $effect(() => {
     document.documentElement.classList.toggle('home', home);
   });
@@ -28,11 +37,12 @@
       </a>
     {/if}
     {#if !online}<span class="offline-pill">Offline</span>{/if}
-    <a class="icon-btn" href={href({ name: 'settings' })} aria-label="Settings">
+    <a class="icon-btn settings-btn" href={href({ name: 'settings' })} aria-label={sync ? `Settings · ${sync.label}` : 'Settings'} title={sync?.label}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="3" />
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
       </svg>
+      {#if sync}<span class="sync-dot {sync.state}" aria-hidden="true"></span>{/if}
     </a>
   </div>
 </header>
