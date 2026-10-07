@@ -6,6 +6,8 @@
   import { href } from '../lib/router.svelte';
   import { renderCardText, searchableText } from '../lib/cardText';
   import Firefly from '../components/Firefly.svelte';
+  import Toast from '../components/Toast.svelte';
+  import { onDestroy } from 'svelte';
 
   let { deckId }: { deckId: string } = $props();
 
@@ -50,7 +52,33 @@
   let editingId = $state<string | null>(null);
   let editFront = $state('');
   let editBack = $state('');
-  let confirmDeleteId = $state<string | null>(null);
+  /** A card deleted a moment ago: hidden at once, really deleted once its undo toast is gone. */
+  let pendingDelete = $state.raw<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const UNDO_MS = 5000;
+  /** Deleted for real; kept out of the list until the live query catches up. */
+  let deleted = $state.raw<string[]>([]);
+
+  function removeCard(id: string) {
+    void commitDelete();
+    pendingDelete = { id, timer: setTimeout(commitDelete, UNDO_MS) };
+  }
+
+  function undoDelete() {
+    if (pendingDelete) clearTimeout(pendingDelete.timer);
+    pendingDelete = null;
+  }
+
+  async function commitDelete() {
+    const pending = pendingDelete;
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    deleted = [...deleted, pending.id];
+    pendingDelete = null;
+    await deleteCard(pending.id);
+  }
+
+  // Leaving the page (or the app) doesn't cancel a delete.
+  onDestroy(() => void commitDelete());
   let frontInput: HTMLTextAreaElement | undefined = $state();
   /** The new-card form stays folded away until asked for. */
   let adding = $state(false);
@@ -58,8 +86,10 @@
   const filtered = $derived.by(() => {
     const q = query.trim().toLowerCase();
     if (!$cards) return [];
-    if (!q) return $cards;
-    return $cards.filter((c) => searchableText(c.front).includes(q) || searchableText(c.back).includes(q));
+    const hidden = pendingDelete ? [...deleted, pendingDelete.id] : deleted;
+    const shown = hidden.length ? $cards.filter((c) => !hidden.includes(c.id)) : $cards;
+    if (!q) return shown;
+    return shown.filter((c) => searchableText(c.front).includes(q) || searchableText(c.back).includes(q));
   });
 
   async function addCard(e: SubmitEvent) {
@@ -215,20 +245,6 @@
               <button class="btn ghost small" type="button" onclick={() => (editingId = null)}>Cancel</button>
             </div>
           </form>
-        {:else if confirmDeleteId === card.id}
-          <div class="confirm">
-            <p>Delete this card and its review history?</p>
-            <div class="row">
-              <button
-                class="btn danger small"
-                onclick={async () => {
-                  await deleteCard(card.id);
-                  confirmDeleteId = null;
-                }}>Delete</button
-              >
-              <button class="btn ghost small" onclick={() => (confirmDeleteId = null)}>Cancel</button>
-            </div>
-          </div>
         {:else}
           <div class="card-row">
             <div class="card-text">
@@ -244,7 +260,7 @@
                 editBack = card.back;
               }}>Edit</button
             >
-            <button class="btn ghost small" aria-label="Delete card" onclick={() => (confirmDeleteId = card.id)}>
+            <button class="btn ghost small" aria-label="Delete card" onclick={() => removeCard(card.id)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
               </svg>
@@ -253,7 +269,7 @@
         {/if}
       </li>
     {:else}
-      {#if $cards && $cards.length > 0}
+      {#if $cards && query.trim()}
         <p class="muted">No cards match "{query}".</p>
       {:else if $cards}
         <div class="empty panel">
@@ -264,4 +280,12 @@
       {/if}
     {/each}
   </ul>
+{/if}
+
+<svelte:window onpagehide={() => void commitDelete()} />
+
+{#if pendingDelete}
+  {#key pendingDelete.id}
+    <Toast message="Card deleted" action="Undo" onaction={undoDelete} />
+  {/key}
 {/if}
