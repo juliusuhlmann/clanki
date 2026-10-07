@@ -57,7 +57,8 @@
       // Cap thinking time so leaving the app open doesn't distort stats.
       const durationMs = Math.min(now - shownAt, 120_000);
       const updated = await rate(current, grade, durationMs, now);
-      last = { before: current, reviewedAt: now, session: session.snapshot() };
+      // A plain copy: $state proxies can't be stored in IndexedDB.
+      last = { before: $state.snapshot(current), reviewedAt: now, session: session.snapshot() };
       session.answered(updated, now);
       reviewedCount++;
       showNext();
