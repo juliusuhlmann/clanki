@@ -52,6 +52,8 @@
   let editBack = $state('');
   let confirmDeleteId = $state<string | null>(null);
   let frontInput: HTMLTextAreaElement | undefined = $state();
+  /** The new-card form stays folded away until asked for. */
+  let adding = $state(false);
 
   const filtered = $derived.by(() => {
     const q = query.trim().toLowerCase();
@@ -91,9 +93,11 @@
     return `added ${date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) })}`;
   }
 
-  // Ctrl/Cmd+Enter submits the add form from either textarea.
-  function submitOnCtrlEnter(e: KeyboardEvent) {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+  // Ctrl/Cmd+Enter submits the add form from either textarea; Esc folds it away.
+  function formKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      adding = false;
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       (e.currentTarget as HTMLElement).closest('form')?.requestSubmit();
     }
@@ -172,21 +176,27 @@
     {/if}
   </section>
 
-  <form class="panel card-form" onsubmit={addCard}>
-    <h2>New card</h2>
-    <label>
-      Front
-      <textarea bind:this={frontInput} bind:value={front} rows="2" placeholder="Question or term" onkeydown={submitOnCtrlEnter}></textarea>
-    </label>
-    <label>
-      Back
-      <textarea bind:value={back} rows="3" placeholder="Answer" onkeydown={submitOnCtrlEnter}></textarea>
-    </label>
-    <div class="row">
-      <button class="btn primary" type="submit" disabled={!front.trim() || !back.trim()}>Add card</button>
-      <span class="muted small"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
-    </div>
-  </form>
+  {#if adding}
+    <form class="panel card-form" onsubmit={addCard}>
+      <h2>New card</h2>
+      <label>
+        Front
+        <!-- svelte-ignore a11y_autofocus -->
+        <textarea bind:this={frontInput} bind:value={front} rows="2" placeholder="Question or term" onkeydown={formKeydown} autofocus></textarea>
+      </label>
+      <label>
+        Back
+        <textarea bind:value={back} rows="3" placeholder="Answer" onkeydown={formKeydown}></textarea>
+      </label>
+      <div class="row">
+        <button class="btn primary" type="submit" disabled={!front.trim() || !back.trim()}>Add card</button>
+        <button class="btn ghost" type="button" onclick={() => (adding = false)}>Done</button>
+        <span class="muted small"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
+      </div>
+    </form>
+  {:else}
+    <button class="add-trigger" onclick={() => (adding = true)}>+ Add card</button>
+  {/if}
 
   <p class="section-label">Cards</p>
   {#if $cards && $cards.length > 0}
@@ -248,7 +258,8 @@
       {:else if $cards}
         <div class="empty panel">
           <Firefly size={36} />
-          <p>No cards yet. Add your first one above.</p>
+          <p>No cards yet.</p>
+          {#if !adding}<button class="btn primary small" onclick={() => (adding = true)}>Add your first card</button>{/if}
         </div>
       {/if}
     {/each}

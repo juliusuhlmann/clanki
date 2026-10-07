@@ -10,7 +10,7 @@ _TODO_
 
 Done (steps 2–3):
 - Decks: create, rename, delete; deck list shows due / new counts
-- Cards: add, edit, delete, search (multi-line text, see "Card text format")
+- Cards: add (the form opens from "+ Add card" on the deck page and stays open for the next card; Esc or Done folds it), edit, delete, search (multi-line text, see "Card text format")
 - Review: show answer (button, tap the card, Space) → Again / Hard / Good / Easy with interval previews; keyboard shortcuts (Space, 1–4)
 - Undo: an "Undo" chip (or Z / Backspace) takes back the last answer: the card's earlier state is restored and its review leaves the log (a sync tombstone too); the card shows again with the answer revealed. In a library run only until the next runner run starts
 - Edit while studying: the pencil in the card's corner (or E) edits front and back in place (Ctrl+Enter saves, Esc cancels). Cards from repo deck files say that the file's next update puts its text back
