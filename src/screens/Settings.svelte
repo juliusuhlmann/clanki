@@ -130,7 +130,7 @@
   <label class="setting">
     <span class="label">
       New cards per day
-      <span class="hint">Per deck. {#if saved}<strong>Saved.</strong>{/if}</span>
+      <span class="hint">The limit for each deck, set on this device only. {#if saved}<strong>Saved.</strong>{/if}</span>
     </span>
     <input type="number" min="0" max="999" inputmode="numeric" bind:value={newPerDay} onchange={saveNewPerDay} />
   </label>
