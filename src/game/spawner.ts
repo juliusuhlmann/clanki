@@ -1,7 +1,7 @@
 // Generates rows of obstacles and letters. Every row leaves at least one lane
 // completely empty, and rows are spaced so the player can always reach it.
 
-export type ObstacleKind = 'pile' | 'cart' | 'ladder' | 'shelf' | 'rollingCart' | 'table' | 'books' | 'globe';
+export type ObstacleKind = 'pile' | 'cart' | 'ladder' | 'shelf' | 'rollingCart' | 'table' | 'books' | 'globe' | 'rubble';
 
 export interface ObstacleSpec {
   kind: ObstacleKind;
@@ -10,7 +10,7 @@ export interface ObstacleSpec {
    * covers the lane it ends up in; a reading table covers every lane it spans.
    */
   lanes: number[];
-  /** Ladders (and a bookcase under one): the wall it leans on. Falling books: the wall they fall from. */
+  /** Ladders (and a bookcase under one): the wall it leans on. Falling books and collapses: the wall they fall from. */
   side?: -1 | 1;
   /** Rolling carts: the lane the cart starts in before drifting into `lanes[0]`. */
   fromLane?: number;
@@ -20,6 +20,8 @@ export interface ObstacleSpec {
   depth: number;
   /** Height of the top in world units; only piles (and fallen books) are low enough to jump over. */
   height: number;
+  /** Collapses: length of the front part of the heap where books are still falling. */
+  fallDepth?: number;
   /** Seed for the obstacle's look (book colours, sizes). */
   variant: number;
 }
@@ -128,9 +130,39 @@ export function globeRolled(z: number): number {
   return GLOBE_LEAD - (globeZ(z) - z);
 }
 
+// Collapse: after a rumble, books pour off one wall's shelves for a few seconds and bury the
+// outer lane on that side. The heap stays for a stretch of normal rows on the other two lanes,
+// then ends and the corridor is three lanes again.
+export const COLLAPSE_FALL_SECONDS = 5;
+export const COLLAPSE_NARROW_SECONDS = 8;
+/** The heap's height over its lane: too tall to jump, low enough to stay under a ladder. */
+export const RUBBLE_HEIGHT = 1.0;
+/** The heap is drawn in slices this long. */
+export const RUBBLE_SLICE = 1;
+/** Books land on a slice of the heap as it comes from this distance to this one. */
+export const RUBBLE_FALL_START_Z = 32;
+export const RUBBLE_FALL_END_Z = 16;
+
+/**
+ * 0..1 fall progress of the heap's slice `s` metres behind its front, at distance z. Slices in
+ * the falling part land as they come within RUBBLE_FALL_START_Z; past it, each slice has
+ * fallen a little farther away, so the rest of the heap is already down by the time you see it.
+ */
+export function rubbleFall(z: number, s: number, fallDepth: number): number {
+  const start = RUBBLE_FALL_START_Z + Math.max(0, s - fallDepth);
+  return Math.min(1, Math.max(0, (start - z) / (RUBBLE_FALL_START_Z - RUBBLE_FALL_END_Z)));
+}
+
 /** Lanes a player gliding along the floor (no jump) can't get through, once the row is close. */
 export function glideBlocked(o: ObstacleSpec): number[] {
   return o.kind === 'table' ? [] : o.lanes;
+}
+
+/** Whether a row can go beside a heap burying `lane`: nothing in that lane, and a way through the rest. */
+export function fitsBeside(row: Row, lane: number): boolean {
+  if (row.letters.some((l) => l.lane === lane)) return false;
+  if (row.obstacles.some((o) => o.lanes.includes(lane) || o.fromLane === lane || o.kind === 'shelf')) return false;
+  return new Set([...row.obstacles.flatMap(glideBlocked), lane]).size < 3;
 }
 
 const WORD = 'CLANKI';
@@ -195,9 +227,79 @@ export class Spawner {
 
   /**
    * The next row. `variety` adds the rolling cart, reading table and falling books; the
-   * game turns it on a few seconds into a run so the start stays simple.
+   * game turns it on a few seconds into a run so the start stays simple. `blockedLane` is a
+   * lane buried by a collapse: the row keeps out of it and leaves a way through the other two.
    */
-  next(speed: number, variety = true): Row {
+  next(speed: number, variety = true, blockedLane?: number): Row {
+    return blockedLane === undefined ? this.generate(speed, variety) : this.besideHeap(speed, variety, blockedLane);
+  }
+
+  /**
+   * A row beside a collapse heap: only the middle lane and the open outer lane are left, so
+   * each row blocks at most one of them (the heap is the cart's or pile's company).
+   */
+  private besideHeap(speed: number, variety: boolean, buried: number): Row {
+    const open = [1, 2 - buried];
+    const outer = open[1];
+    const patterns: [number, string][] = [
+      [0.4, 'single'],
+      [0.18, 'ladder'],
+      [0.08, 'letters'],
+    ];
+    if (variety) patterns.push([0.1, 'rollingCart'], [0.12, 'table'], [0.08, 'books'], [0.1, 'globe']);
+    const total = patterns.reduce((s, [w]) => s + w, 0);
+    let roll = this.rng() * total;
+    let pattern = 'single';
+    for (const [w, p] of patterns) {
+      pattern = p;
+      roll -= w;
+      if (roll < 0) break;
+    }
+
+    let obstacles: ObstacleSpec[] = [];
+    let letters: LetterSpec[] = [];
+    let extra = 0;
+    const lane = this.pick(open);
+    const other = open.find((l) => l !== lane)!;
+
+    if (pattern === 'single') {
+      if (this.rng() < 0.5) {
+        obstacles = [this.pile(lane)];
+        if (this.rng() < 0.6) letters = this.letterArc(lane);
+      } else {
+        obstacles = [this.cart(lane)];
+        if (this.rng() < 0.5) letters = this.letterLine(other, 3);
+      }
+    } else if (pattern === 'ladder') {
+      // Leaning either way: over the heap (go round through the open outer lane) or over the
+      // open outer lane (glide under it there).
+      const side: -1 | 1 = this.rng() < 0.5 ? -1 : 1;
+      obstacles = [{ kind: 'ladder', lanes: [1], side, depth: LADDER_DEPTH, height: LADDER_TOP_Y, variant: this.variant() }];
+      if (this.rng() < 0.5) letters = this.letterLine(outer, 3);
+    } else if (pattern === 'rollingCart') {
+      // Rolls out of one open lane into the other, freeing the lane it leaves.
+      obstacles = [{ ...this.cart(other), kind: 'rollingCart', fromLane: lane }];
+    } else if (pattern === 'table') {
+      obstacles = [
+        { kind: 'table', lanes: [Math.min(...open), Math.max(...open)], base: TABLE_BASE, depth: TABLE_DEPTH, height: TABLE_HEIGHT, variant: this.variant() },
+      ];
+      if (this.rng() < 0.6) letters = this.letterLine(this.pick(open), 3).map((l) => ({ ...l, dz: l.dz - 1.5 }));
+    } else if (pattern === 'books') {
+      const side: -1 | 1 = lane === 0 ? -1 : lane === 2 ? 1 : buried === 0 ? 1 : -1;
+      obstacles = [{ ...this.pile(lane), kind: 'books', side }];
+    } else if (pattern === 'globe') {
+      obstacles = [{ kind: 'globe', lanes: [lane], depth: GLOBE_RADIUS * 2, height: GLOBE_RADIUS * 2, variant: this.variant() }];
+      extra = GLOBE_LEAD + 2;
+    } else {
+      letters = this.letterLine(this.pick(open), 5);
+      extra = 5 * LETTER_SPACING;
+    }
+
+    const gapAfter = Math.max(minGap(speed) + this.rng() * speed * 0.5, extra + 3);
+    return { obstacles, letters, gapAfter };
+  }
+
+  private generate(speed: number, variety: boolean): Row {
     const lanes = [0, 1, 2];
     const patterns: [number, Pattern][] = [
       [0.2, 'pile'],

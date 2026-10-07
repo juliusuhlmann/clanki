@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Game, LANE_X, START_HEARTS, type Action, type GameEvent } from './engine';
-import { CART_HEIGHT, GLOBE_RADIUS, LADDER_TOP_Y, PILE_HEIGHT, TABLE_BASE, TABLE_DEPTH, TABLE_HEIGHT } from './spawner';
+import { CART_HEIGHT, GLOBE_RADIUS, LADDER_TOP_Y, RUBBLE_HEIGHT, PILE_HEIGHT, TABLE_BASE, TABLE_DEPTH, TABLE_HEIGHT } from './spawner';
 
 const DT = 1 / 60;
 
@@ -43,6 +43,7 @@ function emptyGame(seconds = 30): Game {
   (game as unknown as { untilNextRow: number }).untilNextRow = 1e9;
   game.obstacles = [];
   game.letters = [];
+  game.collapseAt = null;
   return game;
 }
 
@@ -179,6 +180,70 @@ describe('Game', () => {
     for (let i = 0; i < 3; i++) game.letters.push({ lane: 1, z: 2 + i * 2, y: 0.5, char: 'C', taken: false, phase: 0 });
     simulate(game, 1.5);
     expect(game.score).toBe(3);
+  });
+
+  describe('collapse', () => {
+    function addHeap(game: Game, lane: 0 | 2, z: number, depth = 60) {
+      game.obstacles.push({ kind: 'rubble', lanes: [lane], side: lane === 0 ? -1 : 1, z, depth, fallDepth: 20, height: RUBBLE_HEIGHT, variant: 1, hit: false });
+    }
+
+    it('starts with a rumble and buries an outer lane', () => {
+      const game = emptyGame();
+      game.collapseAt = 0;
+      const events = simulate(game, 0.5);
+      expect(events.filter((e) => e.type === 'rumble')).toHaveLength(1);
+      const heap = game.obstacles.find((o) => o.kind === 'rubble')!;
+      expect([0, 2]).toContain(heap.lanes[0]);
+      expect(game.rumble).toBeGreaterThan(0.5);
+    });
+
+    it("won't let you move into the buried lane", () => {
+      const game = emptyGame();
+      addHeap(game, 0, -1);
+      simulate(game, 0.5, { 1: 'left' });
+      expect(game.lane).toBe(1);
+      expect(game.hearts).toBe(START_HEARTS);
+    });
+
+    it('running into the front costs a heart and puts you back in the middle lane', () => {
+      const game = emptyGame();
+      simulate(game, 0.2, { 1: 'left' });
+      addHeap(game, 0, 3);
+      simulate(game, 0.5);
+      expect(game.hearts).toBe(START_HEARTS - 1);
+      expect(game.lane).toBe(1);
+    });
+
+    it('cannot be jumped', () => {
+      const game = emptyGame();
+      simulate(game, 0.2, { 1: 'left' });
+      addHeap(game, 0, 5);
+      simulateJump(game, 1);
+      expect(game.hearts).toBe(START_HEARTS - 1);
+    });
+
+    it('rows beside the heap keep out of its lane, and the lane opens again after it', () => {
+      for (const seed of [1, 2, 3, 4, 5, 6]) {
+        const game = new Game(seed);
+        game.start(40);
+        game.collapseAt = 6;
+        game.hearts = 1e9;
+        let sawHeap = false;
+        for (let i = 0; i < 60 * 30; i++) {
+          game.update(DT);
+          const heap = game.obstacles.find((o) => o.kind === 'rubble');
+          if (!heap) continue;
+          sawHeap = true;
+          for (const o of game.obstacles) {
+            if (o === heap || o.z + o.depth < heap.z || o.z > heap.z + heap.depth) continue;
+            expect(o.lanes).not.toContain(heap.lanes[0]);
+          }
+        }
+        expect(sawHeap).toBe(true);
+        expect(game.obstacles.some((o) => o.kind === 'rubble')).toBe(false);
+        expect(game.buriedLane()).toBeUndefined();
+      }
+    });
   });
 
   describe('rolling globe', () => {

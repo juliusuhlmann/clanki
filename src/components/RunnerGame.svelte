@@ -64,6 +64,7 @@
       const events = debug?.paused ? [] : game.update(dt, input ? input.take() : []);
       for (const e of events) {
         if (e.type === 'hit') navigator.vibrate?.(60);
+        else if (e.type === 'rumble') navigator.vibrate?.([120, 60, 120, 60, 200]);
         else if (e.type === 'collect') renderer.burst(e.x, e.y, e.z);
         else if (e.type === 'end') finish(e.reason);
       }

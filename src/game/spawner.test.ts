@@ -4,6 +4,7 @@ import {
   bookFall,
   booksHeightAt,
   createRng,
+  fitsBeside,
   GLOBE_LEAD,
   GLOBE_RADIUS,
   GLOBE_ROLL_Z,
@@ -16,6 +17,9 @@ import {
   ROLL_START_Z,
   SHELF_HEIGHT,
   rollingCartX,
+  RUBBLE_FALL_END_Z,
+  RUBBLE_FALL_START_Z,
+  rubbleFall,
   Spawner,
   TABLE_BASE,
   TABLE_HEIGHT,
@@ -180,6 +184,29 @@ describe('Spawner', () => {
     // Mirrored on the right wall.
     expect(ladderHeightAt(1, 0)).toBeCloseTo(ladderHeightAt(-1, 0)!);
     expect(ladderHeightAt(1, -1.1)).toBeNull();
+  });
+
+  it('beside a collapse heap, keeps rows out of its lane and leaves a way through the rest', () => {
+    for (const lane of [0, 2]) {
+      const spawner = new Spawner(createRng(31 + lane));
+      let filled = 0;
+      for (let i = 0; i < 2000; i++) {
+        const row = spawner.next(12 + (i % 20), true, lane);
+        expect(fitsBeside(row, lane)).toBe(true);
+        if (row.obstacles.length) filled++;
+      }
+      // Still the usual mix, not just empty rows.
+      expect(filled).toBeGreaterThan(1800);
+    }
+  });
+
+  it('collapse heaps: books land well before you, and the rest of the heap is down before it comes into view', () => {
+    const fallDepth = 150;
+    expect(rubbleFall(RUBBLE_FALL_START_Z + 1, 0, fallDepth)).toBe(0);
+    expect(rubbleFall(RUBBLE_FALL_END_Z, 0, fallDepth)).toBe(1);
+    expect(rubbleFall(RUBBLE_FALL_END_Z, fallDepth, fallDepth)).toBe(1);
+    // Past the falling part, a slice that comes into view (~46 m) has already landed.
+    expect(rubbleFall(46, fallDepth + 30, fallDepth)).toBe(1);
   });
 
   it('is deterministic for a given seed', () => {

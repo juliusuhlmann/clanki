@@ -1,7 +1,19 @@
 // Draws the library corridor, obstacles, the firefly and the HUD on a 2D canvas.
 
 import { HOVER_Y, LANE_X, obstacleX, obstacleZ, START_HEARTS, type Game, type Letter, type Obstacle } from './engine';
-import { BOOK_FALL_START_Z, BOOK_THICKNESS, bookFall, createRng, GLOBE_RADIUS, globeRolled, globeZ, ladderLine, WALL_X } from './spawner';
+import {
+  BOOK_FALL_START_Z,
+  BOOK_THICKNESS,
+  bookFall,
+  createRng,
+  GLOBE_RADIUS,
+  globeRolled,
+  globeZ,
+  ladderLine,
+  RUBBLE_SLICE,
+  rubbleFall,
+  WALL_X,
+} from './spawner';
 import { drawFirefly, FIREFLY_LIGHT } from './firefly';
 import { BOOK_COLORS, makeLetterSprite, makeShelfTextures, makeVignette } from './textures';
 
@@ -99,6 +111,8 @@ export class Renderer {
   private particles: Particle[] = [];
   private dust: { x: number; y: number; r: number; speed: number; phase: number }[] = [];
   private trailTimer = 0;
+  /** Grit trickling from the ceiling while a collapse rumbles, in screen fractions. */
+  private grit: { x: number; y: number; vy: number; r: number }[] = [];
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
@@ -174,6 +188,10 @@ export class Renderer {
     ctx.globalAlpha = 1;
 
     this.drawBackground();
+    // A collapse shakes the corridor (the HUD stays put).
+    ctx.save();
+    const shake = game.rumble * 5;
+    if (shake > 0.05) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     this.drawCeiling(game.distance);
     this.drawFloor(game.distance);
     this.drawLightPools(game.distance);
@@ -185,6 +203,8 @@ export class Renderer {
     this.updateParticles(game, dt);
     this.drawObjects(game);
     this.drawDust(dt);
+    this.drawGrit(game.rumble, dt);
+    ctx.restore();
 
     if (this.vignette) ctx.drawImage(this.vignette, 0, 0, this.w, this.h);
     if (game.flash > 0) {
@@ -491,7 +511,16 @@ export class Renderer {
     type Drawable = { z: number; draw: () => void };
     const items: Drawable[] = [];
 
-    for (const o of game.obstacles) items.push({ z: obstacleZ(o), draw: () => this.drawObstacle(o) });
+    for (const o of game.obstacles) {
+      if (o.kind === 'rubble') {
+        // The heap is many metres long: sort it slice by slice so it overlaps other things properly.
+        const first = Math.max(0, Math.floor((NEAR + 0.2 - o.z) / RUBBLE_SLICE));
+        const last = Math.min(Math.ceil(o.depth / RUBBLE_SLICE) - 1, Math.floor((FAR - o.z) / RUBBLE_SLICE));
+        for (let i = first; i <= last; i++) items.push({ z: o.z + i * RUBBLE_SLICE, draw: () => this.drawRubbleSlice(o, i) });
+      } else {
+        items.push({ z: obstacleZ(o), draw: () => this.drawObstacle(o) });
+      }
+    }
     for (const l of game.letters) items.push({ z: l.z, draw: () => this.drawLetter(l) });
 
     const first = Math.ceil((game.distance + NEAR) / LAMP_GAP - 0.5);
@@ -632,6 +661,93 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(p.x, p.y, Math.max(1, rad * 0.1 * Math.sqrt(facing)), 0, Math.PI * 2);
       ctx.fill();
+    }
+  }
+
+  /**
+   * One slice of a collapse heap: books piled from the buried lane up against the wall,
+   * higher toward the wall and lower at both ends. In the heap's front part the books
+   * are still tumbling off the shelf as the slice comes closer.
+   */
+  private drawRubbleSlice(o: Obstacle, i: number): void {
+    const ctx = this.ctx;
+    const side = o.side ?? -1;
+    const s = i * RUBBLE_SLICE;
+    const z0 = o.z + s;
+    const z1 = z0 + RUBBLE_SLICE;
+    const f = fogAt(z0);
+    if (f > 0.97) return;
+    const rng = createRng((o.variant + i * 7919) >>> 0);
+    const pick = () => BOOK_COLORS[Math.floor(rng() * BOOK_COLORS.length)];
+    const inner = LANE_X[o.lanes[0]] - side * 0.45;
+    const outer = side * (WALL_X - 0.02);
+    const taper = Math.min(1, (s + RUBBLE_SLICE / 2) / 3, (o.depth - s) / 3);
+    const t = rubbleFall(z0, s, o.fallDepth ?? 0);
+    const lit = this.litAt(inner, 0.5, z0);
+
+    // A dark patch on the floor fills the gaps between the books as they land.
+    if (t > 0) this.floorShadow(Math.min(inner, outer), Math.max(inner, outer), z0, z1, 0.55 * Math.min(1, t * 1.5));
+
+    // Books only, in layers: a full layer on the floor, then smaller ones piled toward the
+    // wall. The ends of the heap have fewer layers. Each book tumbles in from the shelf.
+    const layers: [count: number, from: number, y: number][] = [
+      [4, 0, 0],
+      [3, 0.15, 0.14],
+      [2, 0.45, 0.28],
+      [1, 0.7, 0.42],
+    ];
+    const placed: { u: number; y: number }[] = [];
+    layers.forEach(([count, from, ly], layer) => {
+      if (taper <= layer * 0.25) return;
+      for (let k = 0; k < count; k++) placed.push({ u: from + ((k + 0.5) / count) * (1 - from), y: ly });
+    });
+    const books = placed.length;
+    const pile = placed.map((spot, b) => {
+      const color = pick();
+      const u = Math.min(1, Math.max(0, spot.u + (rng() - 0.5) * 0.12));
+      // Lying either across the lane or along it.
+      const across = rng() < 0.55;
+      const half = across ? 0.2 + rng() * 0.08 : 0.12 + rng() * 0.05;
+      const len = across ? 0.3 + rng() * 0.1 : 0.5 + rng() * 0.2;
+      const th = 0.1 + rng() * 0.06;
+      return {
+        b,
+        color,
+        x: inner + (outer - inner) * u,
+        half,
+        len,
+        th,
+        y: spot.y + rng() * 0.03,
+        dz: rng() * (RUBBLE_SLICE - len),
+        startY: 2 + rng() * 2.6,
+        // Staggered so the last book lands just as the slice is done.
+        tb: Math.min(1, Math.max(0, t * (1 + books * 0.06) - b * 0.06)),
+      };
+    });
+    // Landed books bottom layer first, far before near; books in the air on top.
+    pile.sort((a, c) => (a.tb >= 1 ? 0 : 1) - (c.tb >= 1 ? 0 : 1) || a.y - c.y || c.dz - a.dz);
+    for (const { b, color, x, half, len, th, y, dz, startY, tb } of pile) {
+      if (tb >= 1) {
+        this.box(x - half, x + half, y, y + th, z0 + dz, z0 + dz + len, color);
+        this.pageEdge(x - half, x + half, y, th, z0 + dz);
+      } else if (t > 0) {
+        // From the shelf, arcing down and spinning.
+        const startX = side * (WALL_X - 0.15);
+        const e = tb * tb;
+        const bx = startX + (x - startX) * Math.min(1, tb * 1.1);
+        const by = startY + (y + th / 2 - startY) * e + Math.sin(tb * Math.PI) * 0.3;
+        const p = this.p(bx, by, z0 + dz);
+        const w = half * 2 * p.s;
+        const hh = Math.max(2, (th + 0.05) * p.s);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(-side * tb * Math.PI * (1 + b * 0.3));
+        ctx.fillStyle = fogged(color, f, 0, lit);
+        ctx.fillRect(-w / 2, -hh / 2, w, hh);
+        ctx.fillStyle = fogged('#e9dcc0', f, -0.05);
+        ctx.fillRect(-w / 2 + w * 0.08, -hh * 0.12, w * 0.8, hh * 0.24);
+        ctx.restore();
+      }
     }
   }
 
@@ -1105,6 +1221,25 @@ export class Renderer {
       ctx.fill();
     }
     ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /** Grit and dust trickling from the ceiling while the corridor rumbles. */
+  private drawGrit(rumble: number, dt: number): void {
+    const ctx = this.ctx;
+    let spawn = rumble * 70 * dt;
+    while (spawn > 0) {
+      if (spawn >= 1 || Math.random() < spawn) {
+        this.grit.push({ x: Math.random(), y: -0.02, vy: 0.35 + Math.random() * 0.5, r: 0.8 + Math.random() * 1.8 });
+      }
+      spawn -= 1;
+    }
+    this.grit = this.grit.filter((g) => g.y < 1.05);
+    for (const g of this.grit) {
+      g.vy += 0.9 * dt;
+      g.y += g.vy * dt;
+      ctx.fillStyle = `rgba(150,120,90,${0.55 * (1 - g.y * 0.6)})`;
+      ctx.fillRect(g.x * this.w, g.y * this.h, g.r, g.r * 1.6);
+    }
   }
 
   // ---------- HUD ----------

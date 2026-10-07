@@ -1,7 +1,20 @@
 // Runner game state and rules. Pure logic: no drawing, no DOM.
 // World units: x = sideways (lanes), y = up, z = distance ahead of the player.
 
-import { booksHeightAt, createRng, globeZ, ladderHeightAt, ladderLine, rollingCartX, Spawner, type ObstacleKind } from './spawner';
+import {
+  booksHeightAt,
+  COLLAPSE_FALL_SECONDS,
+  COLLAPSE_NARROW_SECONDS,
+  createRng,
+  globeZ,
+  ladderHeightAt,
+  ladderLine,
+  rollingCartX,
+  RUBBLE_FALL_END_Z,
+  RUBBLE_HEIGHT,
+  Spawner,
+  type ObstacleKind,
+} from './spawner';
 
 export const LANE_X = [-1.1, 0, 1.1];
 export const SPAWN_Z = 46;
@@ -28,6 +41,10 @@ const INVULNERABLE_SECONDS = 1.2;
 const FIRST_ROW_SECONDS = 2;
 /** Seconds into a run before rolling carts, reading tables and falling books appear. */
 const VARIETY_AFTER = 3;
+/** Share of runs with a collapse, and the window (seconds into the run) when it starts. */
+const COLLAPSE_CHANCE = 0.5;
+const COLLAPSE_EARLIEST = 8;
+const COLLAPSE_LATEST = 14;
 
 // Letters are collectibles: the score is how many you collect in a run.
 /** Half thickness of a ladder rail, for collisions. */
@@ -43,6 +60,7 @@ export interface Obstacle {
   side?: -1 | 1;
   fromLane?: number;
   base?: number;
+  fallDepth?: number;
   z: number;
   depth: number;
   height: number;
@@ -78,6 +96,7 @@ export type GameEvent =
   | { type: 'hit'; heartsLeft: number }
   | { type: 'collect'; x: number; y: number; z: number }
   | { type: 'land' }
+  | { type: 'rumble' }
   | { type: 'end'; reason: EndReason };
 
 export class Game {
@@ -97,6 +116,10 @@ export class Game {
   invulnerableFor = 0;
   /** 0..1, how strongly to flash the screen after a hit. */
   flash = 0;
+  /** 0..1, how hard the corridor shakes while a collapse rumbles. */
+  rumble = 0;
+  /** Seconds into the run when the collapse starts, or null if there is none (left). */
+  collapseAt: number | null = null;
 
   lane = 1;
   x = LANE_X[1];
@@ -141,20 +164,61 @@ export class Game {
     let z = this.speed * FIRST_ROW_SECONDS;
     while (z < SPAWN_Z) z += this.spawnRow(z);
     this.untilNextRow = z - SPAWN_Z;
+    this.rumble = 0;
+    this.collapseAt = this.rng() < COLLAPSE_CHANCE ? COLLAPSE_EARLIEST + this.rng() * (COLLAPSE_LATEST - COLLAPSE_EARLIEST) : null;
+  }
+
+  /** The heap of a collapse, while it is in the corridor. */
+  private get rubble(): Obstacle | undefined {
+    return this.obstacles.find((o) => o.kind === 'rubble');
+  }
+
+  /** The lane buried beside you right now, if any: you can't move into it. */
+  buriedLane(): number | undefined {
+    const r = this.rubble;
+    return r && r.z < 0.5 && r.z + r.depth > -0.5 ? r.lanes[0] : undefined;
+  }
+
+  /**
+   * The rumble starts and books begin to pour off one wall: the heap goes where the next row
+   * would have, and no rows come while the books are falling.
+   */
+  private startCollapse(events: GameEvent[]): void {
+    this.collapseAt = null;
+    const side: -1 | 1 = this.rng() < 0.5 ? -1 : 1;
+    const fallDepth = this.speed * COLLAPSE_FALL_SECONDS;
+    this.obstacles.push({
+      kind: 'rubble',
+      lanes: [side < 0 ? 0 : 2],
+      side,
+      z: SPAWN_Z + this.untilNextRow,
+      depth: fallDepth + this.speed * COLLAPSE_NARROW_SECONDS,
+      fallDepth,
+      height: RUBBLE_HEIGHT,
+      variant: Math.floor(this.rng() * 1e9),
+      hit: false,
+    });
+    this.untilNextRow += fallDepth;
+    events.push({ type: 'rumble' });
   }
 
   /** Adds the spawner's next row at distance z; returns the gap to the row after it. */
   private spawnRow(z: number): number {
-    const row = this.spawner.next(this.speed, this.elapsed >= VARIETY_AFTER);
+    // Rows beside the heap keep out of its lane. Leave time to get back into it after the heap
+    // ends, since that lane may be the only way through the next row.
+    const r = this.rubble;
+    const blocked = r && z + 3 > r.z && z - 3 - this.speed * 0.6 < r.z + r.depth ? r.lanes[0] : undefined;
+    const row = this.spawner.next(this.speed, this.elapsed >= VARIETY_AFTER, blocked);
     for (const o of row.obstacles) this.obstacles.push({ ...o, z, hit: false });
     for (const l of row.letters) this.letters.push({ ...l, z: z + l.dz, taken: false, phase: this.rng() * Math.PI * 2 });
     return row.gapAfter;
   }
 
   private act(action: Action): void {
-    if (action === 'left') this.lane = Math.max(0, this.lane - 1);
-    else if (action === 'right') this.lane = Math.min(2, this.lane + 1);
-    else if (action === 'jump' && this.onGround) this.vy = JUMP_VELOCITY;
+    if (action === 'left' || action === 'right') {
+      const lane = action === 'left' ? Math.max(0, this.lane - 1) : Math.min(2, this.lane + 1);
+      if (lane !== this.buriedLane()) this.lane = lane;
+    } else if (action === 'jump' && this.onGround) this.vy = JUMP_VELOCITY;
     // Drop straight back down mid-jump (gravity alone takes ~0.7s for a full jump).
     else if (action === 'down' && !this.onGround) this.vy = Math.min(this.vy, -DROP_VELOCITY);
   }
@@ -198,15 +262,23 @@ export class Game {
     this.obstacles = this.obstacles.filter((o) => obstacleZ(o) + o.depth > DESPAWN_Z);
     this.letters = this.letters.filter((l) => l.z > DESPAWN_Z && !l.taken);
 
+    // The rumble lasts while books are still coming down.
+    const heap = this.rubble;
+    const falling = heap !== undefined && heap.z + (heap.fallDepth ?? 0) > RUBBLE_FALL_END_Z - 4;
+    this.rumble += ((falling ? 1 : 0) - this.rumble) * Math.min(1, dt * (falling ? 4 : 1.5));
+
     if (this.mode !== 'run') return events;
 
     this.timeLeft = Math.max(0, this.timeLeft - dt);
 
     // Spawn new rows.
     this.untilNextRow -= dz;
+    if (this.collapseAt !== null && this.elapsed >= this.collapseAt) this.startCollapse(events);
     if (this.untilNextRow <= 0) this.untilNextRow += this.spawnRow(SPAWN_Z + this.untilNextRow);
 
     this.checkCollisions(events, dz);
+    // Ran into the front of the heap: thrown back into the middle lane.
+    if (this.lane === this.buriedLane()) this.lane = 1;
 
     if (this.hearts <= 0) this.end('hearts', events);
     else if (this.timeLeft <= 0) this.end('time', events);
@@ -237,7 +309,7 @@ export class Game {
           const x1 = (moving ? obstacleX(o) : LANE_X[Math.max(...o.lanes)]) + 0.45;
           const overlapX = this.x + SPARK_HALF_WIDTH > x0 && this.x - SPARK_HALF_WIDTH < x1;
           // Tables float above the floor: glide under them, but don't jump into them.
-          hit = overlapX && bottom < obstacleHeight(o) && top > (o.base ?? 0);
+          hit = overlapX && (o.kind === 'rubble' || (bottom < obstacleHeight(o) && top > (o.base ?? 0)));
         }
         if (hit) {
           o.hit = true;
