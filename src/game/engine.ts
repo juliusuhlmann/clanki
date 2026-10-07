@@ -23,12 +23,20 @@ export const DESPAWN_Z = -3;
 /** Height of the spark's centre when gliding on the floor. */
 export const HOVER_Y = 0.42;
 const SPARK_HALF_HEIGHT = 0.25;
+// Ducking: the spark drops low and squashes, so its top is at ~0.38 instead of ~0.67.
+export const DUCK_Y = 0.24;
+const DUCK_HALF_HEIGHT = 0.14;
+const DUCK_SECONDS = 0.6;
+/** How fast the spark ducks down and straightens up again (per second). */
+const DUCK_RATE = 22;
 const SPARK_HALF_WIDTH = 0.28;
 const SPARK_HALF_DEPTH = 0.25;
 
-const JUMP_VELOCITY = 6.2;
+const JUMP_VELOCITY = 5.5;
 const GRAVITY = 17;
-const DROP_VELOCITY = 7; // from the top of a jump: ~0.14s to land (gravity alone: ~0.36s)
+/** How high a jump lifts the spark (~0.89). */
+export const JUMP_APEX = (JUMP_VELOCITY * JUMP_VELOCITY) / (2 * GRAVITY);
+const DROP_VELOCITY = 7; // from the top of a jump: ~0.12s to land (gravity alone: ~0.32s)
 const LANE_SWITCH_RATE = 16;
 
 const START_SPEED = 17;
@@ -42,7 +50,7 @@ const FIRST_ROW_SECONDS = 2;
 /** Seconds into a run before rolling carts, reading tables and falling books appear. */
 const VARIETY_AFTER = 3;
 /** Share of runs with a collapse, and the window (seconds into the run) when it starts. */
-const COLLAPSE_CHANCE = 0.5;
+const COLLAPSE_CHANCE = 1 / 3;
 const COLLAPSE_EARLIEST = 8;
 const COLLAPSE_LATEST = 14;
 
@@ -126,6 +134,10 @@ export class Game {
   /** Height above hover level (0 when gliding). */
   jumpY = 0;
   vy = 0;
+  /** 0..1, how far the spark is ducked (eases in and out). */
+  duck = 0;
+  /** Seconds of ducking left; a duck asked for mid-jump starts on landing. */
+  private duckFor = 0;
 
   obstacles: Obstacle[] = [];
   letters: Letter[] = [];
@@ -159,6 +171,8 @@ export class Game {
     this.obstacles = [];
     this.letters = [];
     this.endReason = null;
+    this.duck = 0;
+    this.duckFor = 0;
     // Fill the corridor right away: the first row is about a second ahead, the rest follow
     // at normal spacing out to the spawn distance.
     let z = this.speed * FIRST_ROW_SECONDS;
@@ -214,13 +228,27 @@ export class Game {
     return row.gapAfter;
   }
 
+  /** Height of the spark's centre right now (gliding, ducked or jumping). */
+  get bodyY(): number {
+    return HOVER_Y - (HOVER_Y - DUCK_Y) * this.duck + this.jumpY;
+  }
+
+  private get halfHeight(): number {
+    return SPARK_HALF_HEIGHT - (SPARK_HALF_HEIGHT - DUCK_HALF_HEIGHT) * this.duck;
+  }
+
   private act(action: Action): void {
     if (action === 'left' || action === 'right') {
       const lane = action === 'left' ? Math.max(0, this.lane - 1) : Math.min(2, this.lane + 1);
       if (lane !== this.buriedLane()) this.lane = lane;
-    } else if (action === 'jump' && this.onGround) this.vy = JUMP_VELOCITY;
-    // Drop straight back down mid-jump (gravity alone takes ~0.7s for a full jump).
-    else if (action === 'down' && !this.onGround) this.vy = Math.min(this.vy, -DROP_VELOCITY);
+    } else if (action === 'jump' && this.onGround) {
+      this.vy = JUMP_VELOCITY;
+      this.duckFor = 0;
+    } else if (action === 'down') {
+      // Duck; mid-jump, drop straight back down first (gravity alone takes ~0.7s for a full jump).
+      if (!this.onGround) this.vy = Math.min(this.vy, -DROP_VELOCITY);
+      this.duckFor = DUCK_SECONDS;
+    }
   }
 
   update(dt: number, actions: Action[] = []): GameEvent[] {
@@ -252,6 +280,9 @@ export class Game {
         events.push({ type: 'land' });
       }
     }
+    const ducking = this.duckFor > 0 && this.onGround;
+    if (ducking) this.duckFor = Math.max(0, this.duckFor - dt);
+    this.duck += ((ducking ? 1 : 0) - this.duck) * Math.min(1, DUCK_RATE * dt);
 
     this.flash = Math.max(0, this.flash - dt * 2.5);
     this.invulnerableFor = Math.max(0, this.invulnerableFor - dt);
@@ -287,9 +318,9 @@ export class Game {
 
   /** `dz` is how far the world moved this frame: an obstacle hits if it swept through you. */
   private checkCollisions(events: GameEvent[], dz: number): void {
-    const bottom = HOVER_Y + this.jumpY - SPARK_HALF_HEIGHT;
-    const top = HOVER_Y + this.jumpY + SPARK_HALF_HEIGHT;
-    const centerY = HOVER_Y + this.jumpY;
+    const centerY = this.bodyY;
+    const bottom = centerY - this.halfHeight;
+    const top = centerY + this.halfHeight;
 
     if (this.invulnerableFor <= 0) {
       for (const o of this.obstacles) {
@@ -308,7 +339,7 @@ export class Game {
           const x0 = (moving ? obstacleX(o) : LANE_X[Math.min(...o.lanes)]) - 0.45;
           const x1 = (moving ? obstacleX(o) : LANE_X[Math.max(...o.lanes)]) + 0.45;
           const overlapX = this.x + SPARK_HALF_WIDTH > x0 && this.x - SPARK_HALF_WIDTH < x1;
-          // Tables float above the floor: glide under them, but don't jump into them.
+          // Tables float above the floor: duck under them, but don't jump into them.
           hit = overlapX && (o.kind === 'rubble' || (bottom < obstacleHeight(o) && top > (o.base ?? 0)));
         }
         if (hit) {

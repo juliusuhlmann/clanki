@@ -179,7 +179,7 @@ export class Renderer {
     // Follow the firefly most of the way, slightly lagging, like other lane runners.
     this.camX += (game.x * CAM_FOLLOW - this.camX) * Math.min(1, dt * 9);
     this.lightX = game.x;
-    this.lightY = HOVER_Y + game.jumpY;
+    this.lightY = game.bodyY;
     // A slow breathing pulse; letters make the lantern flare.
     this.flare = Math.max(0, this.flare - dt * 2.5);
     this.glow = 0.9 + 0.1 * Math.sin(this.t * 2.6) + this.flare * 0.35;
@@ -403,7 +403,7 @@ export class Renderer {
    */
   private drawDarkness(game: Game): void {
     const ctx = this.ctx;
-    const c = this.p(game.x, HOVER_Y + game.jumpY, 0);
+    const c = this.p(game.x, game.bodyY, 0);
     const inner = 0.9 * c.s * this.glow;
     const outer = Math.max(this.w, this.h) * 0.75;
     const stretch = 1.5;
@@ -1140,11 +1140,17 @@ export class Renderer {
   private drawPlayer(game: Game): void {
     const air = Math.min(1, game.jumpY / 1.1);
     const bob = game.onGround ? Math.sin(this.t * 6) * 0.04 : 0;
-    const p = this.p(game.x, HOVER_Y + game.jumpY + bob, 0);
+    const p = this.p(game.x, game.bodyY + bob, 0);
     const tilt = Math.max(-1, Math.min(1, (LANE_X[game.lane] - game.x) * 1.5));
     const flicker = game.invulnerableFor > 0 && Math.floor(game.invulnerableFor * 12) % 2 === 0 ? 0.35 : 1;
     // No dark shadow: the firefly is the light source, so its pool of light is drawn on the floor instead.
-    drawFirefly(this.ctx, p.x, p.y, 0.24 * p.s, { t: this.t, tilt, air, alpha: flicker, glow: this.glow });
+    // Ducking squashes it flat and wide.
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(1 + 0.2 * game.duck, 1 - 0.4 * game.duck);
+    drawFirefly(ctx, 0, 0, 0.24 * p.s, { t: this.t, tilt, air, alpha: flicker, glow: this.glow });
+    ctx.restore();
   }
 
   // ---------- Particles ----------
@@ -1159,7 +1165,7 @@ export class Renderer {
       // behind, so they stay a compact tail instead of rushing at the camera.
       this.particles.push({
         x: game.x + (Math.random() - 0.5) * 0.16,
-        y: HOVER_Y + game.jumpY - 0.1 + (Math.random() - 0.5) * 0.14,
+        y: game.bodyY - 0.1 + (Math.random() - 0.5) * 0.14,
         z: -0.02,
         vx: (Math.random() - 0.5) * 0.25,
         vy: (Math.random() - 0.35) * 0.3,

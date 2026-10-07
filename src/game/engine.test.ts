@@ -17,7 +17,7 @@ function simulate(game: Game, seconds: number, actionsAt: Record<number, Action>
 
 /**
  * Runs the game and jumps once the first obstacle is close enough that the top of the jump
- * (~0.36s after take-off) comes as it passes, whatever the current speed. Other actions as in simulate.
+ * (~0.32s after take-off) comes as it passes, whatever the current speed. Other actions as in simulate.
  */
 function simulateJump(game: Game, seconds: number, actionsAt: Record<number, Action> = {}): GameEvent[] {
   const events: GameEvent[] = [];
@@ -81,7 +81,7 @@ describe('Game', () => {
     expect(game.hearts).toBe(START_HEARTS);
   });
 
-  it('down drops back to the ground quickly mid-jump, and does nothing on the ground', () => {
+  it('down drops back to the ground quickly mid-jump, and stays on the ground there', () => {
     const game = emptyGame();
     simulate(game, 0.1, { 0: 'jump' });
     expect(game.jumpY).toBeGreaterThan(0.3);
@@ -105,15 +105,47 @@ describe('Game', () => {
     }
   });
 
-  it('you glide under a reading table, but jumping into it hits', () => {
+  it('you duck under a reading table; gliding or jumping into it hits', () => {
     const table = (game: Game) =>
       game.obstacles.push({ kind: 'table', lanes: [0, 1], base: TABLE_BASE, z: 5, depth: TABLE_DEPTH, height: TABLE_HEIGHT, variant: 1, hit: false });
+    // Ducking just before it arrives (~0.29s away at the start speed).
+    const duck = emptyGame();
+    table(duck);
+    expect(simulate(duck, 1.2, { 5: 'down' }).some((e) => e.type === 'hit')).toBe(false);
     const glide = emptyGame();
     table(glide);
-    expect(simulate(glide, 1.2).some((e) => e.type === 'hit')).toBe(false);
+    expect(simulate(glide, 1.2).some((e) => e.type === 'hit')).toBe(true);
     const jump = emptyGame();
     table(jump);
     expect(simulateJump(jump, 1.2).some((e) => e.type === 'hit')).toBe(true);
+  });
+
+  describe('ducking', () => {
+    it('ducks for a moment, then straightens up', () => {
+      const game = emptyGame();
+      const glideY = game.bodyY;
+      simulate(game, 0.2, { 0: 'down' });
+      expect(game.bodyY).toBeLessThan(glideY - 0.15);
+      simulate(game, 0.8);
+      expect(game.bodyY).toBeCloseTo(glideY, 2);
+    });
+
+    it('down mid-jump drops you and you duck on landing', () => {
+      const game = emptyGame();
+      simulate(game, 0.15, { 0: 'jump' });
+      simulate(game, 0.25, { 0: 'down' });
+      expect(game.onGround).toBe(true);
+      expect(game.duck).toBeGreaterThan(0.9);
+    });
+
+    it('jumping cancels a duck', () => {
+      const game = emptyGame();
+      simulate(game, 0.15, { 0: 'down' });
+      simulate(game, 0.1, { 0: 'jump' });
+      expect(game.jumpY).toBeGreaterThan(0.3);
+      simulate(game, 1);
+      expect(game.duck).toBeLessThan(0.01);
+    });
   });
 
   it('falling books land as a pile you can hit or jump over', () => {

@@ -23,8 +23,9 @@ import {
   Spawner,
   TABLE_BASE,
   TABLE_HEIGHT,
+  UNDER_TABLE_LETTER_Y,
 } from './spawner';
-import { HOVER_Y, LANE_X } from './engine';
+import { DUCK_Y, HOVER_Y, JUMP_APEX, LANE_X } from './engine';
 
 describe('Spawner', () => {
   it('always leaves at least one lane you can glide through without jumping', () => {
@@ -78,11 +79,16 @@ describe('Spawner', () => {
     expect(bookFall(2, 11)).toBe(1);
   });
 
-  it('tables leave room to glide under but not to jump over', () => {
+  it('tables leave room to duck under, but not to glide under or jump over', () => {
     const glideTop = HOVER_Y + 0.25;
-    const apexBottom = HOVER_Y + 1.13 - 0.25;
-    expect(glideTop).toBeLessThan(TABLE_BASE);
+    const duckTop = DUCK_Y + 0.14;
+    const apexBottom = HOVER_Y + JUMP_APEX - 0.25;
+    expect(duckTop).toBeLessThan(TABLE_BASE);
+    expect(glideTop).toBeGreaterThan(TABLE_BASE);
     expect(apexBottom).toBeLessThan(TABLE_HEIGHT);
+    // Letters under a table are in reach while ducking.
+    expect(Math.abs(UNDER_TABLE_LETTER_Y - DUCK_Y)).toBeLessThan(0.6);
+    expect(UNDER_TABLE_LETTER_Y).toBeLessThan(TABLE_BASE);
   });
 
   it('spaces rows far enough apart to cross two lanes at the current speed', () => {
@@ -100,8 +106,8 @@ describe('Spawner', () => {
     for (let i = 0; i < 1000; i++) {
       for (const o of spawner.next(12).obstacles) kinds.set(o.kind, o.height);
     }
-    // Bottom of the spark at the top of a jump (apex ≈ 1.13, half height 0.25).
-    const apexBottom = HOVER_Y + 1.13 - 0.25;
+    // Bottom of the spark at the top of a jump (half height 0.25).
+    const apexBottom = HOVER_Y + JUMP_APEX - 0.25;
     expect(kinds.get('pile')).toBe(PILE_HEIGHT);
     expect(PILE_HEIGHT).toBeLessThan(apexBottom);
     expect(kinds.get('cart')).toBeGreaterThan(apexBottom);
@@ -156,7 +162,7 @@ describe('Spawner', () => {
     for (let z = 0; z < 60; z += 0.5) expect(globeZ(z)).toBeGreaterThanOrEqual(z);
     expect(globeZ(0)).toBe(0);
     // Jumpable: the spark's underside at the top of a jump clears it.
-    expect(GLOBE_RADIUS * 2).toBeLessThan(HOVER_Y + 1.13 - 0.25);
+    expect(GLOBE_RADIUS * 2).toBeLessThan(HOVER_Y + JUMP_APEX - 0.25);
   });
 
   it('puts globes in a lane of their own, mostly with company, and keeps the next row clear of them', () => {

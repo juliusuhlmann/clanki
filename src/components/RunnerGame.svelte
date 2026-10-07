@@ -39,7 +39,7 @@
   let continued = false;
 
   const touch = matchMedia('(pointer: coarse)').matches;
-  const hint = touch ? 'Swipe to dodge · tap to jump · collect letters' : '← → dodge · ↑ / Space jump · collect letters';
+  const hint = touch ? 'Swipe to dodge · tap to jump · swipe down to duck' : '← → dodge · ↑ / Space jump · ↓ duck';
 
   onMount(() => {
     game = new Game();

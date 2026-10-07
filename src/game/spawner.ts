@@ -84,9 +84,11 @@ export function rollingCartX(fromLane: number, toLane: number, z: number, laneX:
   return laneX[fromLane] + (laneX[toLane] - laneX[fromLane]) * e;
 }
 
-// Reading table: you glide underneath (the spark's top is at ~0.67), but any jump hits it,
-// and it's too tall (lamp and books on top) to jump over.
-export const TABLE_BASE = 0.8;
+// Reading table: low enough that you have to duck under it (gliding, the spark's top is at
+// ~0.67; ducked, ~0.38). Any jump hits it, and it's too tall (lamp and books on top) to jump over.
+export const TABLE_BASE = 0.55;
+/** Letters under a table sit low, where a ducking spark picks them up. */
+export const UNDER_TABLE_LETTER_Y = 0.3;
 export const TABLE_HEIGHT = 1.5;
 export const TABLE_DEPTH = 1.5;
 
@@ -113,7 +115,7 @@ export function booksHeightAt(z: number): number {
 }
 
 // Rolling globe: a library globe off its stand. Small enough to jump (top 0.72, the spark's
-// underside clears ~1.3 at the top of a jump). It waits out of sight a little behind its row,
+// underside clears ~1.06 at the top of a jump). It waits out of sight a little behind its row,
 // then rolls toward you faster than the corridor and catches up with its row just as it
 // reaches you, so it arrives with the row and never runs into the row ahead.
 export const GLOBE_RADIUS = 0.36;
@@ -283,7 +285,7 @@ export class Spawner {
       obstacles = [
         { kind: 'table', lanes: [Math.min(...open), Math.max(...open)], base: TABLE_BASE, depth: TABLE_DEPTH, height: TABLE_HEIGHT, variant: this.variant() },
       ];
-      if (this.rng() < 0.6) letters = this.letterLine(this.pick(open), 3).map((l) => ({ ...l, dz: l.dz - 1.5 }));
+      if (this.rng() < 0.6) letters = this.letterLine(this.pick(open), 3).map((l) => ({ ...l, dz: l.dz - 1.5, y: UNDER_TABLE_LETTER_Y }));
     } else if (pattern === 'books') {
       const side: -1 | 1 = lane === 0 ? -1 : lane === 2 ? 1 : buried === 0 ? 1 : -1;
       obstacles = [{ ...this.pile(lane), kind: 'books', side }];
@@ -367,8 +369,8 @@ export class Spawner {
       // Beside a two-lane table there's sometimes a cart, so going under is the only way.
       const beside = lanes.find((l) => !span.includes(l));
       if (beside !== undefined && this.rng() < 0.35) obstacles.push(this.cart(beside));
-      // Letters under the table reward staying low.
-      if (this.rng() < 0.6) letters = this.letterLine(this.pick(span), 3).map((l) => ({ ...l, dz: l.dz - 1.5 }));
+      // Letters under the table reward ducking.
+      if (this.rng() < 0.6) letters = this.letterLine(this.pick(span), 3).map((l) => ({ ...l, dz: l.dz - 1.5, y: UNDER_TABLE_LETTER_Y }));
     } else if (pattern === 'books') {
       const lane = this.pick(lanes);
       const side: -1 | 1 = lane === 0 ? -1 : lane === 2 ? 1 : this.rng() < 0.5 ? -1 : 1;
@@ -379,7 +381,7 @@ export class Spawner {
       const others = lanes.filter((l) => l !== lane);
       obstacles = [{ kind: 'globe', lanes: [lane], depth: GLOBE_RADIUS * 2, height: GLOBE_RADIUS * 2, variant: this.variant() }];
       // Usually something else in the way: a cart or a pile beside it (dodge or jump the globe),
-      // or a reading table over both other lanes (glide under it or jump the globe).
+      // or a reading table over both other lanes (duck under it or jump the globe).
       const r = this.rng();
       if (r < 0.25 && lane !== 1) {
         obstacles.push({ kind: 'table', lanes: others, base: TABLE_BASE, depth: TABLE_DEPTH, height: TABLE_HEIGHT, variant: this.variant() });
