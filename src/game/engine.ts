@@ -26,7 +26,7 @@ const SPARK_HALF_HEIGHT = 0.25;
 // Ducking: the spark drops a little and squashes, so its top is at ~0.46 instead of ~0.67.
 export const DUCK_Y = 0.3;
 export const DUCK_HALF_HEIGHT = 0.16;
-const DUCK_SECONDS = 0.4;
+const DUCK_SECONDS = 0.35;
 /** How fast the spark ducks down and straightens up again (per second). */
 const DUCK_RATE = 22;
 const SPARK_HALF_WIDTH = 0.28;
