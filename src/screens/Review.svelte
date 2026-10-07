@@ -3,6 +3,7 @@
   import { db, type Card } from '../lib/db';
   import { buildQueue, previewIntervals, rate, Session, undoRate, type Grade } from '../lib/scheduler';
   import { href } from '../lib/router.svelte';
+  import { updateCard } from '../lib/store';
   import StudyCard from '../components/StudyCard.svelte';
   import Firefly from '../components/Firefly.svelte';
   import Orb from '../components/Orb.svelte';
@@ -65,6 +66,12 @@
     }
   }
 
+  async function edit(front: string, back: string) {
+    if (!current) return;
+    await updateCard(current.id, front, back);
+    current = { ...current, front: front.trim(), back: back.trim() };
+  }
+
   /** Takes back the last answer and shows that card again, answer revealed. */
   async function undo() {
     if (!last || busy || !session) return;
@@ -118,6 +125,7 @@
       {intervals}
       onreveal={reveal}
       onanswer={answer}
+      onedit={edit}
     />
   {:else}
     <div class="done">

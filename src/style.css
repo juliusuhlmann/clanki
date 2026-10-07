@@ -865,6 +865,40 @@ input[type='search'] {
   color: var(--faint);
 }
 
+.catalog-head-end {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+/* Small pencil in the card's corner: fix a typo without leaving the session */
+.card-edit {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -0.35rem -0.5rem 0 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--faint);
+  background: none;
+  cursor: pointer;
+}
+
+.card-edit:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.card-edit-form {
+  flex: 1;
+  padding-top: 0.5rem;
+}
+
+.answer-bar.hidden {
+  visibility: hidden;
+}
+
 .catalog-body {
   flex: 1;
   display: flex;

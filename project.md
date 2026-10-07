@@ -13,6 +13,7 @@ Done (steps 2–3):
 - Cards: add, edit, delete, search (multi-line text, see "Card text format")
 - Review: show answer → Again / Hard / Good / Easy with interval previews; keyboard shortcuts (Space, 1–4)
 - Undo: an "Undo" chip (or Z / Backspace) takes back the last answer: the card's earlier state is restored and its review leaves the log (a sync tombstone too); the card shows again with the answer revealed. In a library run only until the next runner run starts
+- Edit while studying: the pencil in the card's corner (or E) edits front and back in place (Ctrl+Enter saves, Esc cancels). Cards from repo deck files say that the file's next update puts its text back
 - FSRS scheduling (ts-fsrs, 90% target retention, fuzz on); cards in learning steps return in the same session (20-minute learn-ahead)
 - Daily new-card limit per deck (default 20); the study day starts at 4:00
 - Hash routing, so Android's back button moves between screens

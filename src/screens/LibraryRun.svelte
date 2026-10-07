@@ -3,6 +3,7 @@
   import { db, libraryRunRank, saveLibraryRun, topLibraryRuns, type Card, type LibraryRun } from '../lib/db';
   import { buildLibraryQueue, LIBRARY_LEARN_AHEAD_MS, previewIntervals, rate, Session, splitBlocks, totalLeftToday, undoRate, type Grade } from '../lib/scheduler';
   import { href } from '../lib/router.svelte';
+  import { updateCard } from '../lib/store';
   import { RUN_SECONDS, RUNS_PER_LIBRARY_RUN } from '../game/reward';
   import StudyCard from '../components/StudyCard.svelte';
   import RunnerGame from '../components/RunnerGame.svelte';
@@ -114,6 +115,12 @@
       last = null;
       await finish();
     }
+  }
+
+  async function edit(front: string, back: string) {
+    if (!current) return;
+    await updateCard(current.id, front, back);
+    current = { ...current, front: front.trim(), back: back.trim() };
   }
 
   /** Takes back the last answer and shows that card again, answer revealed. */
@@ -251,6 +258,7 @@
       paused={phase === 'running'}
       onreveal={reveal}
       onanswer={answer}
+      onedit={edit}
     />
   {/if}
 </div>
