@@ -674,7 +674,6 @@ export class Renderer {
     const side = o.side ?? -1;
     const s = i * RUBBLE_SLICE;
     const z0 = o.z + s;
-    const z1 = z0 + RUBBLE_SLICE;
     const f = fogAt(z0);
     if (f > 0.97) return;
     const rng = createRng((o.variant + i * 7919) >>> 0);
@@ -684,9 +683,6 @@ export class Renderer {
     const taper = Math.min(1, (s + RUBBLE_SLICE / 2) / 3, (o.depth - s) / 3);
     const t = rubbleFall(z0, s, o.fallDepth ?? 0);
     const lit = this.litAt(inner, 0.5, z0);
-
-    // A dark patch on the floor fills the gaps between the books as they land.
-    if (t > 0) this.floorShadow(Math.min(inner, outer), Math.max(inner, outer), z0, z1, 0.55 * Math.min(1, t * 1.5));
 
     // Books only, in layers: a full layer on the floor, then smaller ones piled toward the
     // wall. The ends of the heap have fewer layers. Each book tumbles in from the shelf.
@@ -728,6 +724,8 @@ export class Renderer {
     pile.sort((a, c) => (a.tb >= 1 ? 0 : 1) - (c.tb >= 1 ? 0 : 1) || a.y - c.y || c.dz - a.dz);
     for (const { b, color, x, half, len, th, y, dz, startY, tb } of pile) {
       if (tb >= 1) {
+        // The floor shows between the books; those lying on it get a faint contact shadow.
+        if (y < 0.05) this.floorShadow(x - half, x + half, z0 + dz, z0 + dz + len, 0.3);
         this.box(x - half, x + half, y, y + th, z0 + dz, z0 + dz + len, color);
         this.pageEdge(x - half, x + half, y, th, z0 + dz);
       } else if (t > 0) {

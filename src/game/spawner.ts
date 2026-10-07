@@ -133,8 +133,8 @@ export function globeRolled(z: number): number {
 // Collapse: after a rumble, books pour off one wall's shelves for a few seconds and bury the
 // outer lane on that side. The heap stays for a stretch of normal rows on the other two lanes,
 // then ends and the corridor is three lanes again.
-export const COLLAPSE_FALL_SECONDS = 5;
-export const COLLAPSE_NARROW_SECONDS = 8;
+export const COLLAPSE_FALL_SECONDS = 2.5;
+export const COLLAPSE_NARROW_SECONDS = 4;
 /** The heap's height over its lane: too tall to jump, low enough to stay under a ladder. */
 export const RUBBLE_HEIGHT = 1.0;
 /** The heap is drawn in slices this long. */
