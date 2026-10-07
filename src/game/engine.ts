@@ -40,7 +40,9 @@ const DROP_VELOCITY = 7; // from the top of a jump: ~0.12s to land (gravity alon
 const LANE_SWITCH_RATE = 16;
 
 const START_SPEED = 17;
-const MAX_EXTRA_SPEED = 33; // top speed 50 m/s
+/** Top speed (m/s) the run ramps toward: on touch screens, and with a keyboard (20% faster). */
+export const TOP_SPEED = 50;
+export const DESKTOP_TOP_SPEED = 60;
 const SPEED_RAMP_SECONDS = 18;
 const ATTRACT_SPEED = 5;
 export const START_HEARTS = 2;
@@ -146,7 +148,10 @@ export class Game {
   private untilNextRow = 0;
   private rng: () => number;
 
-  constructor(seed = Date.now()) {
+  constructor(
+    seed = Date.now(),
+    private topSpeed = TOP_SPEED,
+  ) {
     this.rng = createRng(seed);
     this.spawner = new Spawner(this.rng);
   }
@@ -258,7 +263,7 @@ export class Game {
     // Speed: ramps up during a run, coasts to a stop after it.
     if (this.mode === 'run') {
       this.elapsed += dt;
-      this.speed = START_SPEED + MAX_EXTRA_SPEED * (1 - Math.exp(-this.elapsed / SPEED_RAMP_SECONDS));
+      this.speed = START_SPEED + (this.topSpeed - START_SPEED) * (1 - Math.exp(-this.elapsed / SPEED_RAMP_SECONDS));
     } else if (this.mode === 'over') {
       this.speed = Math.max(0, this.speed - this.speed * 3 * dt);
     } else {

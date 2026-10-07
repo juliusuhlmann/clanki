@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Game, LANE_X, START_HEARTS, type Action, type GameEvent } from './engine';
+import { DESKTOP_TOP_SPEED, Game, LANE_X, START_HEARTS, TOP_SPEED, type Action, type GameEvent } from './engine';
 import { CART_HEIGHT, GLOBE_RADIUS, LADDER_TOP_Y, RUBBLE_HEIGHT, PILE_HEIGHT, TABLE_BASE, TABLE_DEPTH, TABLE_HEIGHT } from './spawner';
 
 const DT = 1 / 60;
@@ -352,6 +352,18 @@ describe('Game', () => {
     expect(nearest / game.speed).toBeGreaterThan(1.8);
     expect(nearest / game.speed).toBeLessThan(2.5);
     expect(game.obstacles.length).toBeGreaterThan(1);
+  });
+
+  it('ramps toward the top speed it was given (faster on desktop)', () => {
+    for (const top of [TOP_SPEED, DESKTOP_TOP_SPEED]) {
+      const game = new Game(1, top);
+      game.start(200);
+      game.collapseAt = null;
+      game.hearts = 1e9;
+      simulate(game, 120);
+      expect(game.speed).toBeCloseTo(top, 0);
+    }
+    expect(DESKTOP_TOP_SPEED).toBeCloseTo(TOP_SPEED * 1.2);
   });
 
   it('spawns obstacles during a normal run', () => {
