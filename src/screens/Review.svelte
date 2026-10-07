@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { db, type Card } from '../lib/db';
-  import { buildQueue, previewIntervals, rate, Session, undoRate, type Grade } from '../lib/scheduler';
+  import { buildQueue, formatInterval, libraryRunSize, nextStudyAt, previewIntervals, rate, Rating, Session, totalLeftToday, undoRate, type Grade } from '../lib/scheduler';
   import { href } from '../lib/router.svelte';
   import { updateCard } from '../lib/store';
   import StudyCard from '../components/StudyCard.svelte';
@@ -21,7 +21,11 @@
   let shownAt = 0;
   let busy = false;
   let loading = $state(true);
-  let reviewedCount = $state(0);
+  /** This session's answers, for the summary at the end. */
+  let answers = $state<{ cardId: string; grade: Grade; durationMs: number }[]>([]);
+  const reviewedCount = $derived(answers.length);
+  /** Filled in once the session is over. */
+  let after = $state<{ nextAt: number | null; leftElsewhere: number } | null>(null);
   /** The last answer, so it can be taken back. */
   let last = $state.raw<{ before: Card; reviewedAt: number; session: ReturnType<Session['snapshot']> } | null>(null);
 
@@ -33,7 +37,24 @@
     session = new Session(await buildQueue(deckId, Date.now()));
     loading = false;
     showNext();
+    if (!current) await summarize();
   });
+
+  async function summarize() {
+    const now = Date.now();
+    const [nextAt, leftElsewhere] = await Promise.all([nextStudyAt(deckId, now), totalLeftToday(now)]);
+    after = { nextAt, leftElsewhere };
+  }
+
+  const cardsSeen = $derived(new Set(answers.map((a) => a.cardId)).size);
+  const recalled = $derived(answers.length ? answers.filter((a) => a.grade !== Rating.Again).length / answers.length : 0);
+  const minutes = $derived(answers.reduce((sum, a) => sum + a.durationMs, 0) / 60_000);
+
+  function whenLabel(at: number): string {
+    const diff = at - Date.now();
+    if (diff <= 60_000) return 'right now';
+    return `in ${formatInterval(diff)}`;
+  }
 
   function showNext() {
     if (!session) return;
@@ -60,8 +81,9 @@
       // A plain copy: $state proxies can't be stored in IndexedDB.
       last = { before: $state.snapshot(current), reviewedAt: now, session: session.snapshot() };
       session.answered(updated, now);
-      reviewedCount++;
+      answers.push({ cardId: updated.id, grade, durationMs });
       showNext();
+      if (!current) await summarize();
     } finally {
       busy = false;
     }
@@ -82,7 +104,8 @@
       const restored = await undoRate(last.before, last.reviewedAt, now);
       session.restore(last.session);
       last = null;
-      reviewedCount--;
+      answers.pop();
+      after = null;
       current = restored;
       remaining = session.remaining + 1;
       revealed = true;
@@ -132,14 +155,31 @@
     <div class="done">
       <Firefly size={72} class="spark" />
       <h1>{reviewedCount === 0 ? 'Nothing due' : 'That’s all for now'}</h1>
-      <p class="muted">
-        {reviewedCount === 0
-          ? 'Come back later. New cards and reviews will be waiting.'
-          : `You reviewed ${reviewedCount} card${reviewedCount === 1 ? '' : 's'}. See you on the next round.`}
-      </p>
-      <div class="actions">
-        <a class="btn primary" href={href({ name: 'decks' })}>Back to decks</a>
-      </div>
+      {#if reviewedCount > 0}
+        <dl class="session-stats panel">
+          <div><dt>Cards</dt><dd>{cardsSeen}</dd></div>
+          <div><dt>Recalled</dt><dd>{Math.round(recalled * 100)}%</dd></div>
+          <div><dt>Time</dt><dd>{minutes < 1 ? '<1' : Math.round(minutes)} min</dd></div>
+        </dl>
+      {/if}
+      {#if after}
+        <p class="muted">
+          {#if after.nextAt !== null}
+            This deck is due again {whenLabel(after.nextAt)}.
+          {:else if reviewedCount === 0}
+            This deck has no cards yet.
+          {/if}
+          {#if after.leftElsewhere > 0}
+            {after.leftElsewhere} card{after.leftElsewhere === 1 ? '' : 's'} still waiting in other decks.
+          {/if}
+        </p>
+        <div class="actions">
+          {#if after.leftElsewhere > 0}
+            <a class="btn primary" href={href({ name: 'libraryRun' })}>Library run · {libraryRunSize(after.leftElsewhere)} cards</a>
+          {/if}
+          <a class="btn" class:primary={after.leftElsewhere === 0} href={href({ name: 'decks' })}>Back to decks</a>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>

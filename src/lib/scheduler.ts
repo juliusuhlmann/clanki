@@ -259,6 +259,20 @@ export function splitBlocks(total: number): [number, number, number] {
   return [base + (extra > 0 ? 1 : 0), base + (extra > 1 ? 1 : 0), base];
 }
 
+/**
+ * When this deck next has something to study after today's session: the next review's due time,
+ * or the next study day's start for new cards held back by the daily limit. Null if neither.
+ */
+export async function nextStudyAt(deckId: string, now: number, database: ClankiDb = defaultDb): Promise<number | null> {
+  const cards = await database.cards.where('deckId').equals(deckId).toArray();
+  const reviews = cards.filter((c) => c.fsrs.state !== State.New).map((c) => c.due);
+  const nextReview = reviews.length ? Math.max(now, Math.min(...reviews)) : null;
+  const tomorrow = startOfStudyDay(now) + 24 * 60 * 60 * 1000;
+  const nextNew = cards.some((c) => c.fsrs.state === State.New) ? tomorrow : null;
+  const options = [nextReview, nextNew].filter((t): t is number => t !== null);
+  return options.length ? Math.min(...options) : null;
+}
+
 /** Cards left to study today across all decks (due plus new within each deck's limit). */
 export async function totalLeftToday(now: number, database: ClankiDb = defaultDb): Promise<number> {
   const decks = await database.decks.toArray();

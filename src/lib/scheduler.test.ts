@@ -15,6 +15,7 @@ import {
   State,
   totalLeftToday,
   undoRate,
+  nextStudyAt,
 } from './scheduler';
 import { createCard, createDeck } from './store';
 
@@ -122,6 +123,20 @@ describe('buildQueue', () => {
 
     const queue = await buildQueue(deck.id, now, db);
     expect(queue.map((c) => c.front)).toEqual(['q1']);
+  });
+});
+
+describe('nextStudyAt', () => {
+  it('is the earliest review, or the next study day for held-back new cards', async () => {
+    const deck = await createDeck('Test', db);
+    const now = Date.now();
+    expect(await nextStudyAt(deck.id, now, db)).toBeNull();
+
+    const a = await createCard(deck.id, 'a', 'a', db);
+    expect(await nextStudyAt(deck.id, now, db)).toBe(startOfStudyDay(now) + DAY);
+
+    const reviewed = await rate(a, Rating.Again, 1000, now, db);
+    expect(await nextStudyAt(deck.id, now, db)).toBe(reviewed.due);
   });
 });
 

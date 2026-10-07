@@ -1071,6 +1071,34 @@ input[type='search'] {
   margin-top: 1rem;
 }
 
+/* End of studying a deck: what this session did */
+.session-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: min(100%, 20rem);
+  margin: 0.75rem 0 0.5rem;
+  padding: 0.75rem 0;
+}
+
+.session-stats div + div {
+  border-left: 1px solid var(--border);
+}
+
+.session-stats dt {
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.session-stats dd {
+  margin: 0.2rem 0 0;
+  font-family: var(--serif);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
 /* End of a library run: total letters and the best runs so far */
 .library-summary .kicker {
   margin: 0;
