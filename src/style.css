@@ -909,7 +909,7 @@ input[type='search'] {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2rem;
+  gap: 1.4rem;
   padding-top: 1rem;
   text-align: center;
 }
@@ -924,8 +924,45 @@ input[type='search'] {
   overflow-wrap: anywhere;
 }
 
-.catalog-body .answer {
+.catalog-body .front {
+  transition:
+    color 0.2s,
+    font-size 0.2s;
+}
+
+/* Once the answer shows, the question steps back and a short rule separates the two. */
+.catalog-body.revealed .front {
+  font-size: 1.2rem;
   color: var(--muted);
+}
+
+.answer-rule {
+  align-self: center;
+  width: 2.5rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.catalog-body .answer {
+  animation: answer-in 0.25s ease-out;
+}
+
+@keyframes answer-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-body .front {
+    transition: none;
+  }
+
+  .catalog-body .answer {
+    animation: none;
+  }
 }
 
 /* Images and maths in card text (see src/lib/cardText.ts) */

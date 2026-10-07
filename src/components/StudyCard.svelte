@@ -136,9 +136,10 @@
       </div>
     </form>
   {:else}
-    <div class="catalog-body">
+    <div class="catalog-body" class:revealed>
       <p class="front">{@html renderCardText(card.front)}</p>
       {#if revealed}
+        <span class="answer-rule" aria-hidden="true"></span>
         <p class="answer">{@html renderCardText(card.back)}</p>
       {/if}
     </div>
