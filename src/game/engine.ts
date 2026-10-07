@@ -19,7 +19,7 @@ const DROP_VELOCITY = 7; // from the top of a jump: ~0.14s to land (gravity alon
 const LANE_SWITCH_RATE = 16;
 
 const START_SPEED = 17;
-const MAX_EXTRA_SPEED = 25; // top speed 42 m/s
+const MAX_EXTRA_SPEED = 28; // top speed 45 m/s
 const SPEED_RAMP_SECONDS = 18;
 const ATTRACT_SPEED = 5;
 export const START_HEARTS = 2;
