@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { db, type Card } from '../lib/db';
-  import { buildQueue, previewIntervals, rate, Session, type Grade } from '../lib/scheduler';
+  import { buildQueue, previewIntervals, rate, Session, undoRate, type Grade } from '../lib/scheduler';
   import { href } from '../lib/router.svelte';
   import StudyCard from '../components/StudyCard.svelte';
   import Firefly from '../components/Firefly.svelte';
   import Orb from '../components/Orb.svelte';
+  import UndoChip from '../components/UndoChip.svelte';
 
   // Plain study of one deck. Library runs (with the runner game) start from the home screen.
   let { deckId }: { deckId: string } = $props();
@@ -20,6 +21,8 @@
   let busy = false;
   let loading = $state(true);
   let reviewedCount = $state(0);
+  /** The last answer, so it can be taken back. */
+  let last = $state.raw<{ before: Card; reviewedAt: number; session: ReturnType<Session['snapshot']> } | null>(null);
 
   /** Share of this session's answers done; repeats of "Again" cards count too. */
   const progress = $derived(reviewedCount + remaining === 0 ? 0 : reviewedCount / (reviewedCount + remaining));
@@ -53,9 +56,30 @@
       // Cap thinking time so leaving the app open doesn't distort stats.
       const durationMs = Math.min(now - shownAt, 120_000);
       const updated = await rate(current, grade, durationMs, now);
+      last = { before: current, reviewedAt: now, session: session.snapshot() };
       session.answered(updated, now);
       reviewedCount++;
       showNext();
+    } finally {
+      busy = false;
+    }
+  }
+
+  /** Takes back the last answer and shows that card again, answer revealed. */
+  async function undo() {
+    if (!last || busy || !session) return;
+    busy = true;
+    try {
+      const now = Date.now();
+      const restored = await undoRate(last.before, last.reviewedAt, now);
+      session.restore(last.session);
+      last = null;
+      reviewedCount--;
+      current = restored;
+      remaining = session.remaining + 1;
+      revealed = true;
+      intervals = previewIntervals(restored, now);
+      shownAt = now;
     } finally {
       busy = false;
     }
@@ -80,6 +104,7 @@
     {:else}
       <span class="spacer"></span>
     {/if}
+    {#if last}<UndoChip onundo={undo} />{/if}
   </div>
 
   {#if loading}

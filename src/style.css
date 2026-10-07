@@ -774,6 +774,35 @@ input[type='search'] {
   margin: 0;
 }
 
+.undo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  animation: chip-in 0.2s ease-out;
+}
+
+.undo-chip:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
 /* Run meter: the orb travels toward the next runner run (library run) or the end of the deck (study) */
 .run-meter {
   flex: 1;

@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { db, libraryRunRank, saveLibraryRun, topLibraryRuns, type Card, type LibraryRun } from '../lib/db';
-  import { buildLibraryQueue, LIBRARY_LEARN_AHEAD_MS, previewIntervals, rate, Session, splitBlocks, totalLeftToday, type Grade } from '../lib/scheduler';
+  import { buildLibraryQueue, LIBRARY_LEARN_AHEAD_MS, previewIntervals, rate, Session, splitBlocks, totalLeftToday, undoRate, type Grade } from '../lib/scheduler';
   import { href } from '../lib/router.svelte';
   import { RUN_SECONDS, RUNS_PER_LIBRARY_RUN } from '../game/reward';
   import StudyCard from '../components/StudyCard.svelte';
   import RunnerGame from '../components/RunnerGame.svelte';
   import Firefly from '../components/Firefly.svelte';
   import Orb from '../components/Orb.svelte';
+  import UndoChip from '../components/UndoChip.svelte';
 
   // A library run: cards from all decks in three blocks, with a runner run after the first two.
   // Letters from both runs add up; the total is ranked against earlier library runs.
@@ -28,6 +29,8 @@
   /** Answers after which each runner run starts, e.g. [4, 8] for 12 cards. */
   let runAfter = $state<number[]>([]);
   let answered = $state(0);
+  /** The last answer, so it can be taken back (only until the next runner run starts). */
+  let last = $state.raw<{ before: Card; reviewedAt: number; session: ReturnType<Session['snapshot']> } | null>(null);
   let runsDone = $state(0);
   let letters = $state(0);
 
@@ -64,6 +67,7 @@
     runsDone = 0;
     letters = 0;
     result = null;
+    last = null;
     session = new Session(queue, LIBRARY_LEARN_AHEAD_MS);
     phase = 'cards';
     showNext();
@@ -91,6 +95,7 @@
       // Cap thinking time so leaving the app open doesn't distort stats.
       const durationMs = Math.min(now - shownAt, 120_000);
       const updated = await rate(current, grade, durationMs, now);
+      last = { before: current, reviewedAt: now, session: session.snapshot() };
       session.answered(updated, now);
       answered++;
       showNext();
@@ -104,8 +109,30 @@
   async function advance() {
     if (runsDone < RUNS_PER_LIBRARY_RUN && (answered >= runAfter[runsDone] || !current)) {
       phase = 'running';
+      last = null;
     } else if (!current) {
+      last = null;
       await finish();
+    }
+  }
+
+  /** Takes back the last answer and shows that card again, answer revealed. */
+  async function undo() {
+    if (!last || busy || !session || phase !== 'cards') return;
+    busy = true;
+    try {
+      const now = Date.now();
+      const restored = await undoRate(last.before, last.reviewedAt, now);
+      session.restore(last.session);
+      last = null;
+      answered--;
+      current = restored;
+      remaining = session.remaining + 1;
+      revealed = true;
+      intervals = previewIntervals(restored, now);
+      shownAt = now;
+    } finally {
+      busy = false;
     }
   }
 
@@ -168,6 +195,7 @@
     {:else}
       <span class="spacer"></span>
     {/if}
+    {#if last && phase === 'cards'}<UndoChip onundo={undo} />{/if}
   </div>
 
   {#if phase === 'loading'}

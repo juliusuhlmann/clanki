@@ -14,6 +14,7 @@ import {
   startOfStudyDay,
   State,
   totalLeftToday,
+  undoRate,
 } from './scheduler';
 import { createCard, createDeck } from './store';
 
@@ -59,6 +60,38 @@ describe('rate', () => {
 
     expect(easy.due).toBeGreaterThan(again.due);
     expect(easy.due - now).toBeGreaterThanOrEqual(DAY);
+  });
+});
+
+describe('undoRate', () => {
+  it('restores the card, removes the review and leaves a tombstone for sync', async () => {
+    const deck = await createDeck('Test', db);
+    const card = await createCard(deck.id, 'front', 'back', db);
+    const now = Date.now();
+    await rate(card, Rating.Again, 1000, now, db);
+
+    const restored = await undoRate(card, now, now + 5000, db);
+
+    expect(restored).toEqual({ ...card, updatedAt: now + 5000 });
+    expect(await db.cards.get(card.id)).toEqual(restored);
+    expect(await db.reviews.count()).toBe(0);
+    expect(await db.deletions.toArray()).toEqual([{ kind: 'review', id: `${card.id}|${now}`, at: now + 5000 }]);
+  });
+
+  it('puts the session back as it was before the answer', async () => {
+    const deck = await createDeck('Test', db);
+    const a = await createCard(deck.id, 'a', 'a', db);
+    const b = await createCard(deck.id, 'b', 'b', db);
+    const now = Date.now();
+    const session = new Session([a, b]);
+
+    session.next(now);
+    const before = session.snapshot();
+    session.answered(await rate(a, Rating.Again, 1000, now, db), now);
+    expect(session.remaining).toBe(2);
+    session.restore(before);
+    expect(session.remaining).toBe(1);
+    expect(session.next(now)?.id).toBe(b.id);
   });
 });
 

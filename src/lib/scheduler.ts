@@ -11,7 +11,7 @@ import {
   type DayLoad,
 } from './exam';
 import { fromFsrsCard, scheduler, startOfStudyDay, toFsrsCard } from './fsrs';
-import { db as defaultDb, getNewPerDay, getSetting, type Card, type ClankiDb, type Deck, type FsrsState } from './db';
+import { db as defaultDb, getNewPerDay, getSetting, reviewSyncId, type Card, type ClankiDb, type Deck, type FsrsState } from './db';
 
 export { Rating, State };
 export type { Grade };
@@ -85,6 +85,20 @@ export async function rate(
     });
   });
   return updated;
+}
+
+/**
+ * Takes back an answer given with `rate` at `reviewedAt`: the card gets its earlier state back and
+ * the review leaves the log (as a tombstone too, in case it was synced already).
+ */
+export async function undoRate(before: Card, reviewedAt: number, now: number, database: ClankiDb = defaultDb): Promise<Card> {
+  const restored: Card = { ...before, updatedAt: now };
+  await database.transaction('rw', [database.cards, database.reviews, database.deletions], async () => {
+    await database.cards.put(restored);
+    await database.reviews.where('[cardId+reviewedAt]').equals([before.id, reviewedAt]).delete();
+    await database.deletions.put({ kind: 'review', id: reviewSyncId({ cardId: before.id, reviewedAt }), at: now });
+  });
+  return restored;
 }
 
 /** Number of distinct new cards first studied in this deck today. */
@@ -207,6 +221,16 @@ export class Session {
     if (this.learning.length && this.learning[0].due <= now) return this.learning.shift()!;
     if (this.queue.length) return this.queue.shift()!;
     return this.learning.shift() ?? null;
+  }
+
+  /** A copy of the session's state, to go back to on undo. */
+  snapshot(): { queue: Card[]; learning: Card[] } {
+    return { queue: [...this.queue], learning: [...this.learning] };
+  }
+
+  restore(state: { queue: Card[]; learning: Card[] }): void {
+    this.queue = [...state.queue];
+    this.learning = [...state.learning];
   }
 
   /** Call after rating a card; keeps it in the session if it is due again soon. */
