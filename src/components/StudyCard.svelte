@@ -2,6 +2,7 @@
   import type { Card } from '../lib/db';
   import { Rating, type Grade } from '../lib/scheduler';
   import { renderCardText } from '../lib/cardText';
+  import CardTextarea from './CardTextarea.svelte';
 
   let {
     card,
@@ -123,10 +124,9 @@
     <form class="card-form card-edit-form" onsubmit={saveEdit}>
       <label>
         Front
-        <!-- svelte-ignore a11y_autofocus -->
-        <textarea bind:value={editFront} rows="2" onkeydown={editKeydown} autofocus></textarea>
+        <CardTextarea bind:value={editFront} rows={2} onkeydown={editKeydown} autofocus />
       </label>
-      <label>Back <textarea bind:value={editBack} rows="3" onkeydown={editKeydown}></textarea></label>
+      <label>Back <CardTextarea bind:value={editBack} rows={3} onkeydown={editKeydown} /></label>
       {#if fromRepo}
         <p class="muted small">This card comes from a deck file in the repo. The next update of that file puts its text back, so fix it there too.</p>
       {/if}

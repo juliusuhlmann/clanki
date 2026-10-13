@@ -7,6 +7,7 @@
   import { renderCardText, searchableText } from '../lib/cardText';
   import Firefly from '../components/Firefly.svelte';
   import Toast from '../components/Toast.svelte';
+  import CardTextarea from '../components/CardTextarea.svelte';
   import { onDestroy } from 'svelte';
 
   let { deckId }: { deckId: string } = $props();
@@ -211,12 +212,11 @@
       <h2>New card</h2>
       <label>
         Front
-        <!-- svelte-ignore a11y_autofocus -->
-        <textarea bind:this={frontInput} bind:value={front} rows="2" placeholder="Question or term" onkeydown={formKeydown} autofocus></textarea>
+        <CardTextarea bind:ref={frontInput} bind:value={front} rows={2} placeholder="Question or term" onkeydown={formKeydown} autofocus />
       </label>
       <label>
         Back
-        <textarea bind:value={back} rows="3" placeholder="Answer" onkeydown={formKeydown}></textarea>
+        <CardTextarea bind:value={back} rows={3} placeholder="Answer" onkeydown={formKeydown} />
       </label>
       <div class="row">
         <button class="btn primary" type="submit" disabled={!front.trim() || !back.trim()}>Add card</button>
@@ -238,8 +238,8 @@
       <li class="panel">
         {#if editingId === card.id}
           <form class="card-form" onsubmit={saveEdit}>
-            <label>Front <textarea bind:value={editFront} rows="2"></textarea></label>
-            <label>Back <textarea bind:value={editBack} rows="3"></textarea></label>
+            <label>Front <CardTextarea bind:value={editFront} rows={2} /></label>
+            <label>Back <CardTextarea bind:value={editBack} rows={3} /></label>
             <div class="row">
               <button class="btn primary small" type="submit">Save</button>
               <button class="btn ghost small" type="button" onclick={() => (editingId = null)}>Cancel</button>
