@@ -39,10 +39,10 @@ export const JUMP_APEX = (JUMP_VELOCITY * JUMP_VELOCITY) / (2 * GRAVITY);
 const DROP_VELOCITY = 7; // from the top of a jump: ~0.12s to land (gravity alone: ~0.32s)
 const LANE_SWITCH_RATE = 16;
 
-const START_SPEED = 17;
+const START_SPEED = 15;
 /** Top speed (m/s) the run ramps toward: on touch screens, and with a keyboard (20% faster). */
-export const TOP_SPEED = 50;
-export const DESKTOP_TOP_SPEED = 60;
+export const TOP_SPEED = 40;
+export const DESKTOP_TOP_SPEED = 48;
 const SPEED_RAMP_SECONDS = 18;
 const ATTRACT_SPEED = 5;
 export const START_HEARTS = 2;
