@@ -255,6 +255,24 @@ describe('library runs', () => {
     expect(queue.some((c) => c.id === old.id)).toBe(true);
   });
 
+  it('gives every deck a share of the run, even when one has a big backlog', async () => {
+    const big = await createDeck('Big', db);
+    const small = await createDeck('Small', db);
+    const now = Date.now();
+    for (let i = 0; i < 30; i++) {
+      const c = await createCard(big.id, `b${i}`, 'x', db);
+      await rate(c, Rating.Good, 1000, now - 60 * DAY, db);
+    }
+    for (let i = 0; i < 4; i++) {
+      const c = await createCard(small.id, `s${i}`, 'x', db);
+      await rate(c, Rating.Good, 1000, now - 30 * DAY, db);
+    }
+
+    const queue = await buildLibraryQueue(now, db);
+    expect(queue).toHaveLength(12);
+    expect(queue.filter((c) => c.deckId === small.id)).toHaveLength(4);
+  });
+
   it('ranks runs by letters, ties going to the earlier run', async () => {
     const first = await saveLibraryRun({ finishedAt: 1, letters: 20, cards: 12 }, db);
     await saveLibraryRun({ finishedAt: 2, letters: 35, cards: 12 }, db);

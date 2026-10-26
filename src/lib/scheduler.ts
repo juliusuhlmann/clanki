@@ -280,26 +280,50 @@ export async function totalLeftToday(now: number, database: ClankiDb = defaultDb
   return counts.reduce((sum, c) => sum + c.due + c.new, 0);
 }
 
+/** Shuffles a copy of the list (Fisher-Yates). */
+function shuffled<T>(items: T[], rng: () => number): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/** Takes one card from each list in turn until `limit` cards are taken or the lists run out. */
+function takeInTurn(lists: Card[][], limit: number): Card[] {
+  const out: Card[] = [];
+  for (let i = 0; out.length < limit && lists.some((l) => i < l.length); i++) {
+    for (const l of lists) if (i < l.length && out.length < limit) out.push(l[i]);
+  }
+  return out;
+}
+
 /**
- * The cards for one library run, drawn from all decks: due cards (oldest first),
- * then new cards, cut to libraryRunSize and shuffled so the decks mix.
+ * The cards for one library run, drawn from all decks in turn so no deck takes over:
+ * due cards first, then new cards (each deck's limit still applies). Within a deck both
+ * are picked at random, and the run is shuffled so the decks mix.
  */
 export async function buildLibraryQueue(
   now: number,
   database: ClankiDb = defaultDb,
   rng: () => number = Math.random,
 ): Promise<Card[]> {
-  const decks = await database.decks.toArray();
-  const queues = await Promise.all(decks.map((d) => buildQueue(d.id, now, database)));
-  const all = queues.flat();
-  const due = all.filter((c) => c.fsrs.state !== State.New).sort((a, b) => a.due - b.due);
-  const fresh = all.filter((c) => c.fsrs.state === State.New).sort((a, b) => a.createdAt - b.createdAt);
-  const picked = [...due, ...fresh].slice(0, libraryRunSize(all.length));
-  for (let i = picked.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [picked[i], picked[j]] = [picked[j], picked[i]];
-  }
-  return picked;
+  const decks = shuffled(await database.decks.toArray(), rng);
+  const perDeck = await Promise.all(
+    decks.map(async (d) => {
+      const cards = await database.cards.where('deckId').equals(d.id).toArray();
+      const due = cards.filter((c) => c.fsrs.state !== State.New && c.due <= now);
+      const remainingNew = await remainingNewToday(d.id, cards, now, database);
+      const fresh = shuffled(cards.filter((c) => c.fsrs.state === State.New), rng).slice(0, remainingNew);
+      return { due: shuffled(due, rng), fresh };
+    }),
+  );
+  const left = perDeck.reduce((sum, d) => sum + d.due.length + d.fresh.length, 0);
+  const size = libraryRunSize(left);
+  const due = takeInTurn(perDeck.map((d) => d.due), size);
+  const fresh = takeInTurn(perDeck.map((d) => d.fresh), size - due.length);
+  return shuffled([...due, ...fresh], rng);
 }
 
 export interface ExamStatus {
