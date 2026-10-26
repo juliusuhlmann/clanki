@@ -39,10 +39,13 @@ export const JUMP_APEX = (JUMP_VELOCITY * JUMP_VELOCITY) / (2 * GRAVITY);
 const DROP_VELOCITY = 7; // from the top of a jump: ~0.12s to land (gravity alone: ~0.32s)
 const LANE_SWITCH_RATE = 16;
 
-const START_SPEED = 15;
-/** Top speed (m/s) the run ramps toward: on touch screens, and with a keyboard (20% faster). */
-export const TOP_SPEED = 40;
-export const DESKTOP_TOP_SPEED = 48;
+/** Start and top speed (m/s) of a run: touch screens go slower than keyboards. */
+export interface Speeds {
+  start: number;
+  top: number;
+}
+export const TOUCH_SPEEDS: Speeds = { start: 13, top: 32 };
+export const DESKTOP_SPEEDS: Speeds = { start: 15, top: 48 };
 const SPEED_RAMP_SECONDS = 18;
 const ATTRACT_SPEED = 5;
 export const START_HEARTS = 2;
@@ -150,7 +153,7 @@ export class Game {
 
   constructor(
     seed = Date.now(),
-    private topSpeed = TOP_SPEED,
+    private speeds = TOUCH_SPEEDS,
   ) {
     this.rng = createRng(seed);
     this.spawner = new Spawner(this.rng);
@@ -170,7 +173,7 @@ export class Game {
     this.duration = seconds;
     this.timeLeft = seconds;
     this.elapsed = 0;
-    this.speed = START_SPEED;
+    this.speed = this.speeds.start;
     this.hearts = START_HEARTS;
     this.collected = 0;
     this.obstacles = [];
@@ -263,7 +266,7 @@ export class Game {
     // Speed: ramps up during a run, coasts to a stop after it.
     if (this.mode === 'run') {
       this.elapsed += dt;
-      this.speed = START_SPEED + (this.topSpeed - START_SPEED) * (1 - Math.exp(-this.elapsed / SPEED_RAMP_SECONDS));
+      this.speed = this.speeds.start + (this.speeds.top - this.speeds.start) * (1 - Math.exp(-this.elapsed / SPEED_RAMP_SECONDS));
     } else if (this.mode === 'over') {
       this.speed = Math.max(0, this.speed - this.speed * 3 * dt);
     } else {

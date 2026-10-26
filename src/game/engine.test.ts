@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DESKTOP_TOP_SPEED, Game, LANE_X, START_HEARTS, TOP_SPEED, type Action, type GameEvent } from './engine';
+import { DESKTOP_SPEEDS, Game, LANE_X, START_HEARTS, TOUCH_SPEEDS, type Action, type GameEvent } from './engine';
 import { CART_HEIGHT, GLOBE_RADIUS, LADDER_TOP_Y, RUBBLE_HEIGHT, PILE_HEIGHT, TABLE_BASE, TABLE_DEPTH, TABLE_HEIGHT } from './spawner';
 
 const DT = 1 / 60;
@@ -108,10 +108,10 @@ describe('Game', () => {
   it('you duck under a reading table; gliding or jumping into it hits', () => {
     const table = (game: Game) =>
       game.obstacles.push({ kind: 'table', lanes: [0, 1], base: TABLE_BASE, z: 5, depth: TABLE_DEPTH, height: TABLE_HEIGHT, variant: 1, hit: false });
-    // Ducking just before it arrives (~0.29s away at the start speed).
+    // Ducking just before it arrives (~0.37s away at the touch start speed).
     const duck = emptyGame();
     table(duck);
-    expect(simulate(duck, 1.2, { 5: 'down' }).some((e) => e.type === 'hit')).toBe(false);
+    expect(simulate(duck, 1.2, { 12: 'down' }).some((e) => e.type === 'hit')).toBe(false);
     const glide = emptyGame();
     table(glide);
     expect(simulate(glide, 1.2).some((e) => e.type === 'hit')).toBe(true);
@@ -354,16 +354,17 @@ describe('Game', () => {
     expect(game.obstacles.length).toBeGreaterThan(1);
   });
 
-  it('ramps toward the top speed it was given (faster on desktop)', () => {
-    for (const top of [TOP_SPEED, DESKTOP_TOP_SPEED]) {
-      const game = new Game(1, top);
+  it('starts and ramps toward the speeds it was given (faster on desktop)', () => {
+    for (const speeds of [TOUCH_SPEEDS, DESKTOP_SPEEDS]) {
+      const game = new Game(1, speeds);
       game.start(200);
+      expect(game.speed).toBe(speeds.start);
       game.collapseAt = null;
       game.hearts = 1e9;
       simulate(game, 120);
-      expect(game.speed).toBeCloseTo(top, 0);
+      expect(game.speed).toBeCloseTo(speeds.top, 0);
     }
-    expect(DESKTOP_TOP_SPEED).toBeCloseTo(TOP_SPEED * 1.2);
+    expect(TOUCH_SPEEDS.top).toBeLessThan(DESKTOP_SPEEDS.top);
   });
 
   it('spawns obstacles during a normal run', () => {

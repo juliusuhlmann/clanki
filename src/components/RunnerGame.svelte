@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { DESKTOP_TOP_SPEED, Game, TOP_SPEED } from '../game/engine';
+  import { DESKTOP_SPEEDS, Game, TOUCH_SPEEDS } from '../game/engine';
   import { Renderer } from '../game/render';
   import { InputController } from '../game/input';
 
@@ -42,8 +42,8 @@
   const hint = touch ? 'Swipe to dodge · tap to jump · swipe down to duck' : '← → dodge · ↑ / Space jump · ↓ duck';
 
   onMount(() => {
-    // Keyboard players get a faster top speed than touch screens.
-    game = new Game(Date.now(), touch ? TOP_SPEED : DESKTOP_TOP_SPEED);
+    // Touch screens run slower than keyboards.
+    game = new Game(Date.now(), touch ? TOUCH_SPEEDS : DESKTOP_SPEEDS);
     const renderer = new Renderer(canvas);
 
     const resize = () => {
