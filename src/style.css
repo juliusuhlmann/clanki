@@ -1007,7 +1007,7 @@ input[type='search'] {
   position: sticky;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
   padding: 0.9rem 0 calc(0.25rem + env(safe-area-inset-bottom));
   background: linear-gradient(transparent, var(--bg) 30%);
@@ -1048,10 +1048,6 @@ input[type='search'] {
 
 .grade-again {
   --dot: var(--again);
-}
-
-.grade-hard {
-  --dot: var(--hard);
 }
 
 .grade-good {

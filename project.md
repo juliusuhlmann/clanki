@@ -11,7 +11,7 @@ _TODO_
 Done (steps 2–3):
 - Decks: create, rename, delete; deck list shows due / new counts
 - Cards: add (the form opens from "+ Add card" on the deck page and stays open for the next card; Esc or Done folds it), edit, delete (at once, with a 5s "Card deleted · Undo" toast; the delete happens when the toast goes, or on leaving the page), search (multi-line text, see "Card text format")
-- Review: show answer (button, tap the card, Space) → Again / Hard / Good / Easy with interval previews; keyboard shortcuts (Space, 1–4)
+- Review: show answer (button, tap the card, Space) → Nope / Good / Easy with interval previews (FSRS Again / Good / Easy; Hard is left out); keyboard shortcuts (Space, 1–3)
 - Undo: an "Undo" chip (or Z / Backspace) takes back the last answer: the card's earlier state is restored and its review leaves the log (a sync tombstone too); the card shows again with the answer revealed. In a library run only until the next runner run starts
 - Edit while studying: the pencil in the card's corner (or E) edits front and back in place (Ctrl+Enter saves, Esc cancels). Cards from repo deck files say that the file's next update puts its text back
 - FSRS scheduling (ts-fsrs, 90% target retention, fuzz on); cards in learning steps return in the same session (20-minute learn-ahead)
@@ -51,9 +51,9 @@ Library run flow (`src/screens/LibraryRun.svelte`, `#/library`, started from the
 - Cards come from all decks (`buildLibraryQueue`): due cards first, then new ones within each deck's daily limit, shuffled
 - Size from the cards left today, n: all of them if n < 18, half (rounded up) if 18 ≤ n < 24, otherwise 12 (`libraryRunSize`)
 - Three blocks as even as possible (`splitBlocks`, e.g. 4/4/4) with a runner run after the first two: cards → run → cards → run → cards. After each run its score shows for 1.8s (an emptying bar) and then the cards come back on their own; tap or Enter continues sooner
-- Only cards answered "Again" come back within a library run (2-minute learn-ahead), so the blocks stay even; longer learning steps wait for a later session
+- Only cards answered "Nope" come back within a library run (2-minute learn-ahead), so the blocks stay even; longer learning steps wait for a later session
 - Letters from both runs add up. Finished runs are stored in the `libraryRuns` table (not in backups); the summary shows the rank and the top 10, and the home tile shows the best
-- Studying a single deck (`Review.svelte`) has no runs, just a progress bar with the cards left. Its end screen shows cards studied, % recalled (answers other than Again) and time on cards, when the deck is due again (`nextStudyAt`), and a library-run button when other decks still have cards today
+- Studying a single deck (`Review.svelte`) has no runs, just a progress bar with the cards left. Its end screen shows cards studied, % recalled (answers other than Nope) and time on cards, when the deck is due again (`nextStudyAt`), and a library-run button when other decks still have cards today
 - Settings → "Test the run" (`#/run`) starts a single 30s run that isn't recorded
 - Dev only: `window.__runner` exposes `{ game, paused }` for inspection
 
@@ -119,7 +119,7 @@ Normal scheduling: FSRS (ts-fsrs, `src/lib/fsrs.ts` + `scheduler.ts`) aiming for
    Add cards (front/back) and decks, stored in IndexedDB via Dexie, plus JSON export/import for backups.
    _Goal: create cards on the laptop, back them up, load them on the phone._
 3. **Review loop with FSRS** ✅
-   Show a card, reveal the answer, rate it Again/Hard/Good/Easy, and schedule it with ts-fsrs. Log every review.
+   Show a card, reveal the answer, rate it Nope/Good/Easy, and schedule it with ts-fsrs. Log every review.
    _Goal: a working spaced-repetition app._
 4. **The runner game** ✅ (became the library run: ~12 cards from all decks with two 30s runs, see "The game")
    Build a canvas game with a little spark in three lanes, obstacles, and swipe/arrow-key controls. Insert it every N cards, with correct cards adding game seconds.

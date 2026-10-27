@@ -16,7 +16,7 @@ import { db as defaultDb, getNewPerDay, getSetting, reviewSyncId, type Card, typ
 export { Rating, State };
 export type { Grade };
 
-export const GRADES: Grade[] = [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy];
+export const GRADES: Grade[] = [Rating.Again, Rating.Good, Rating.Easy];
 
 /** Cards due again within this window come back in the same session. */
 export const LEARN_AHEAD_MS = 20 * 60 * 1000;
@@ -39,7 +39,7 @@ export function formatInterval(ms: number): string {
   return `${(days / 365).toFixed(1).replace(/\.0$/, '')}y`;
 }
 
-/** Interval label for each answer button, e.g. { 1: "1m", 2: "6m", 3: "10m", 4: "3d" }. */
+/** Interval label for each answer button, e.g. { 1: "1m", 3: "10m", 4: "3d" }. */
 export function previewIntervals(card: Card, now: number): Record<Grade, string> {
   const preview = scheduler.repeat(toFsrsCard(card), new Date(now));
   const labels = {} as Record<Grade, string>;

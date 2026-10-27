@@ -65,11 +65,11 @@
     }
   }
 
-  const BUTTONS: { grade: Grade; label: string; key: string }[] = [
-    { grade: Rating.Again, label: 'Again', key: '1' },
-    { grade: Rating.Hard, label: 'Hard', key: '2' },
-    { grade: Rating.Good, label: 'Good', key: '3' },
-    { grade: Rating.Easy, label: 'Easy', key: '4' },
+  // Three answers: Hard is left out, as it was easy to press for a card you had actually forgotten.
+  const BUTTONS: { grade: Grade; label: string; cls: string; key: string }[] = [
+    { grade: Rating.Again, label: 'Nope', cls: 'again', key: '1' },
+    { grade: Rating.Good, label: 'Good', cls: 'good', key: '2' },
+    { grade: Rating.Easy, label: 'Easy', cls: 'easy', key: '3' },
   ];
 
   function onKeydown(e: KeyboardEvent) {
@@ -151,7 +151,7 @@
     <button class="btn primary wide" onclick={onreveal}>Show answer <kbd>Space</kbd></button>
   {:else if intervals}
     {#each BUTTONS as b (b.grade)}
-      <button class="btn grade grade-{b.label.toLowerCase()}" onclick={() => onanswer(b.grade)}>
+      <button class="btn grade grade-{b.cls}" onclick={() => onanswer(b.grade)}>
         <span class="grade-label">{b.label}</span>
         <span class="grade-interval">{intervals[b.grade]}</span>
         <kbd>{b.key}</kbd>
