@@ -5,7 +5,7 @@
   import { RUN_SECONDS } from '../game/reward';
   import { exportData, backupFileName, parseBackup, planImport, applyImport, type ImportPlan } from '../lib/backup';
   import { href } from '../lib/router.svelte';
-  import { link, unlink } from '../lib/sync';
+  import { link, pushEverythingNextSync, unlink } from '../lib/sync';
   import { refreshStatus, syncNow, syncStatus } from '../lib/syncRunner.svelte';
 
   let newPerDay = $state<number | null>(null);
@@ -110,6 +110,8 @@
     if (!plan) return;
     try {
       await applyImport(plan);
+      // Imported things keep their old times, so a normal sync would think they were sent already.
+      await pushEverythingNextSync();
       importDone = 'Import complete.';
     } catch (err) {
       importError = err instanceof Error ? err.message : String(err);

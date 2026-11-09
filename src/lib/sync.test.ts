@@ -4,7 +4,8 @@ import { ClankiDb, saveLibraryRun } from './db';
 import { applyRepoDeck } from './repoDecks';
 import { rate, Rating } from './scheduler';
 import { createCard, createDeck, deleteCard, deleteDeck, updateCard } from './store';
-import { link, pendingCount, syncOnce, tooLargeCount, type Transport } from './sync';
+import { link, pendingCount, pushEverythingNextSync, syncOnce, tooLargeCount, type Transport } from './sync';
+import { applyImport } from './backup';
 
 let server: MemoryServer;
 let phone: ClankiDb;
@@ -196,6 +197,30 @@ describe('sync', () => {
     expect(await laptop.cards.get(huge.id)).toBeUndefined();
     expect(await tooLargeCount(phone)).toBe(1);
     expect(await pendingCount(phone)).toBe(0);
+  });
+
+  it('sends a change stamped just before a sync started but saved after it read the changes', async () => {
+    const deck = await createDeck('Analysis', laptop);
+    await syncBoth();
+    // E.g. an answer: its time is taken, then the exam plan is worked out, then the card is saved.
+    const stampedAt = Date.now() - 500;
+    const card = await createCard(deck.id, 'Q', 'A', laptop);
+    await laptop.cards.update(card.id, { updatedAt: stampedAt, createdAt: stampedAt });
+    await syncBoth();
+    expect(await phone.cards.get(card.id)).toBeDefined();
+  });
+
+  it('sends cards brought in from a backup, which keep their old times', async () => {
+    const deck = await createDeck('Analysis', laptop);
+    await syncBoth();
+    const old = Date.now() - 30 * 86_400_000;
+    const card = { ...(await createCard(deck.id, 'Q', 'A', phone)), createdAt: old, updatedAt: old };
+    await phone.cards.delete(card.id);
+    await tick();
+    await applyImport({ decks: [], cards: [card], reviews: [], summary: { newDecks: 0, updatedDecks: 0, newCards: 1, updatedCards: 0, newReviews: 0 } }, laptop);
+    await pushEverythingNextSync(laptop);
+    await syncBoth();
+    expect(await phone.cards.get(card.id)).toEqual(card);
   });
 
   it('does nothing harmful when synced again and again', async () => {

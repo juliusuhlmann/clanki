@@ -21,7 +21,15 @@ export type Transport = (request: SyncRequest) => Promise<SyncResponse>;
 
 export const KEY_SETTING = 'syncKey';
 const CURSOR = 'syncCursor';
-const PUSHED_THROUGH = 'syncPushedThrough';
+// Renamed from 'syncPushedThrough' so every device sends everything once more: records the
+// mistakes below kept back (imports, changes saved just after a sync began) go up with it.
+const PUSHED_THROUGH = 'syncPushedThrough2';
+/**
+ * Changes are found by their own time, which is taken a little before they are saved (an answer
+ * works out the exam plan in between). So each sync also resends this much from before the last
+ * one began; the server ignores what it already has.
+ */
+const PUSH_OVERLAP_MS = 60_000;
 export const LAST_SYNC = 'syncLastAt';
 
 /** Sends requests to the sync worker. Throws `SyncError` with a readable message on failure. */
@@ -124,7 +132,8 @@ export async function applyRemote(changes: SyncRecord[], database: ClankiDb = de
 export async function syncOnce(transport: Transport, database: ClankiDb = defaultDb): Promise<{ pushed: number; pulled: number }> {
   const startedAt = Date.now();
   // Records too big for the server (huge embedded images) are skipped; Settings shows how many.
-  const changes = (await localChanges(await getSetting<number>(PUSHED_THROUGH, 0, database), database)).filter(
+  const since = Math.max(0, (await getSetting<number>(PUSHED_THROUGH, 0, database)) - PUSH_OVERLAP_MS);
+  const changes = (await localChanges(since, database)).filter(
     (c) => recordBytes(c) <= MAX_RECORD_BYTES,
   );
   let cursor = await getSetting<number>(CURSOR, 0, database);
@@ -181,6 +190,11 @@ export async function link(key: string, database: ClankiDb = defaultDb): Promise
   await setSetting(PUSHED_THROUGH, 0, database);
 }
 
+/** Makes the next sync send everything, e.g. after an import brought in things with old times. */
+export async function pushEverythingNextSync(database: ClankiDb = defaultDb): Promise<void> {
+  await setSetting(PUSHED_THROUGH, 0, database);
+}
+
 export async function unlink(database: ClankiDb = defaultDb): Promise<void> {
-  await database.settings.bulkDelete([KEY_SETTING, CURSOR, PUSHED_THROUGH, LAST_SYNC]);
+  await database.settings.bulkDelete([KEY_SETTING, CURSOR, PUSHED_THROUGH, 'syncPushedThrough', LAST_SYNC]);
 }
