@@ -1,5 +1,6 @@
 <script lang="ts">
   import { liveQuery } from 'dexie';
+  import { liveQueryNow } from '../lib/liveNow';
   import { db, type Card } from '../lib/db';
   import { deckCounts, examStatus, formatInterval, retrievability, setExamDate, State } from '../lib/scheduler';
   import { createCard, updateCard, deleteCard } from '../lib/store';
@@ -14,8 +15,8 @@
 
   const deck = liveQuery(() => db.decks.get(deckId));
   const cards = liveQuery(() => db.cards.where('deckId').equals(deckId).reverse().sortBy('createdAt'));
-  const counts = liveQuery(() => deckCounts(deckId, Date.now()));
-  const exam = liveQuery(() => examStatus(deckId, Date.now()));
+  const counts = liveQueryNow((now) => deckCounts(deckId, now));
+  const exam = liveQueryNow((now) => examStatus(deckId, now));
 
   let editingExam = $state(false);
   let examInput = $state('');

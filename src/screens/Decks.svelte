@@ -3,14 +3,15 @@
   import { db, topLibraryRuns } from '../lib/db';
   import { deckCounts, libraryRunSize } from '../lib/scheduler';
   import { activeExam } from '../lib/exam';
+  import { liveQueryNow } from '../lib/liveNow';
   import { createDeck, renameDeck, deleteDeck } from '../lib/store';
   import { href } from '../lib/router.svelte';
   import FlyingFirefly from '../components/FlyingFirefly.svelte';
 
-  // Re-runs whenever the decks, cards, reviews or settings it reads change.
-  const decks = liveQuery(async () => {
+  // Re-runs whenever the decks, cards, reviews or settings it reads change, and every half
+  // minute, as cards come due over time.
+  const decks = liveQueryNow(async (now) => {
     const all = await db.decks.orderBy('name').toArray();
-    const now = Date.now();
     return Promise.all(all.map(async (deck) => ({ deck, counts: await deckCounts(deck.id, now) })));
   });
   const best = liveQuery(async () => (await topLibraryRuns(1))[0]?.letters ?? 0);
